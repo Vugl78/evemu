@@ -241,9 +241,6 @@ void DestinyManager::ProcessState() {
                             mySE->GetName(), mySE->GetID());
                 }
                 m_shipHeading = toVec;
-                // Recalculate distance: ship may have drifted 10+ seconds at
-                // full speed while trying to align.
-                m_targetDistance = GPoint(m_position).distance(m_targetPoint);
                 InitWarp();
                 return;
             }
