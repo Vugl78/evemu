@@ -2032,6 +2032,12 @@ void DestinyManager::WarpTo(const GPoint& where, int32 distance/*0*/, bool autoP
      */
     SafeDelete(m_warpState);
 
+    // Minimum landing offset for warp-to-0 (~2km). Prevents landing inside
+    // objects and being ejected 30+ km by physics.
+    if (distance == 0) {
+        distance = 2200;
+    }
+
     // check for autopilot.  it has 'special' checks in client for auto-disable by destiny update
     if (autoPilot) {
         Follow(pSE, distance);
