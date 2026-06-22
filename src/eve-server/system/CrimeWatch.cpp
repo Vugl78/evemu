@@ -57,8 +57,16 @@ void CrimeWatch::OnAggression(Client* pTarget, float systemSecRating)
             m_client->SendNotifyMsg("CONCORD response initiated. You have been flagged as a criminal.");
         }
 
-        // Start CONCORD response: 5 second delay, then ship destruction
-        m_concordTimer.Start(5000);
+        // -0.2 security penalty for aggression (before kill)
+        m_client->GetChar()->secStatusChange(-0.2f);
+
+        // CONCORD response time depends on system security
+        uint32 concordDelay = 19000; // 0.5 = 19s
+        if (systemSecRating >= 0.9f) concordDelay = 6000;
+        else if (systemSecRating >= 0.8f) concordDelay = 7000;
+        else if (systemSecRating >= 0.7f) concordDelay = 10000;
+        else if (systemSecRating >= 0.6f) concordDelay = 14000;
+        m_concordTimer.Start(concordDelay);
     }
 
     sLog.Debug("CrimeWatch", "OnAggression() - %s(%u) aggressed %s(%u) in sec=%.2f",

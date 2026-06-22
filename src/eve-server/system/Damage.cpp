@@ -473,7 +473,7 @@ void ShipSE::Killed(Damage &fatal_blow) {
             double penalty = 6.0f * m_system->GetSystemSecurityRating() * modifier;
             double loss = penalty * ( pClient->GetSecurityRating() + 10);
             loss *= sConfig.rates.secRate;
-            pClient->GetChar()->secStatusChange( loss );
+            pClient->GetChar()->secStatusChange( -loss );
         }
 
     /* populate kill data for killMail and save to db  -allan 01May16  --updated 13July17 */
