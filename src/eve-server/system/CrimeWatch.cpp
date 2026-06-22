@@ -91,7 +91,7 @@ void CrimeWatch::ApplyConcordPenalty()
     double concordEM = 0.0, concordTherm = 0.0, concordKin = 0.0, concordExp = 0.0;
     double shield = m_client->GetShip()->GetAttribute(AttrShieldCapacity).get_float();
     double armor  = m_client->GetShip()->GetAttribute(AttrArmorHP).get_float();
-    double hull   = m_client->GetShip()->GetAttribute(AttrHp).get_float();
+    double hull   = m_client->GetShip()->GetAttribute(AttrHP).get_float();
     double totalEffectiveHp = shield + armor + hull;
 
     // CONCORD splits damage evenly across all four types and ignores resists.
