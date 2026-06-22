@@ -110,19 +110,30 @@ void CrimeWatch::ApplyConcordPenalty()
     m_client->SendNotifyMsg("CONCORD destroyed your %s in %s.",
         ship->itemName(), m_client->SystemMgr()->GetName());
 
-    // Send killmail from EVE System (senderID=1)
-    LSCService* lsc = m_client->GetLSC();
-    if (lsc != nullptr) {
-        std::vector<int32> recipients;
-        recipients.push_back(m_client->GetCharacterID());
-        std::string subject = "CONCORD Destruction Notice";
+    // Send mail via mailMessage table using MailDB approach (visible in inbox)
+    {
+        DBerror err;
+        uint32 messageID;
         std::string body = "Your ship ";
         body += ship->itemName();
         body += " was destroyed by CONCORD forces in ";
         body += m_client->SystemMgr()->GetName();
         body += ".\n\nYour vessel engaged in illegal activity in a high-security system. "
                "CONCORD has enforced the standard security protocol.";
-        lsc->SendMail(1, recipients, subject, body);
+        std::string bodyEscaped;
+        sDatabase.DoEscapeString(bodyEscaped, body);
+        char toStr[32];
+        snprintf(toStr, sizeof(toStr), "%u", m_client->GetCharacterID());
+        if (sDatabase.RunQueryLID(err, messageID,
+            "INSERT INTO mailMessage (senderID, toCharacterIDs, toListID, toCorpOrAllianceID, "
+            "title, body, sentDate) VALUES (1, '%s', -1, -1, "
+            "'CONCORD Destruction Notice', '%s', %lli)",
+            toStr, bodyEscaped.c_str(), Win32TimeNow()))
+        {
+            sDatabase.RunQuery(err,
+                "INSERT INTO mailStatus (messageID, characterID, statusMask, labelMask) "
+                "VALUES (%u, %u, 0, 1)", messageID, m_client->GetCharacterID());
+        }
     }
 
     Damage d(shipSE, InventoryItemRef(ship.get()), concordDmg, concordDmg, concordDmg, concordDmg, 1.0f, 0);
