@@ -89,7 +89,7 @@ void CrimeWatch::ApplyConcordPenalty()
 
     // CONCORD: zero HP and trigger destruction via Damage (self as source, no weapon).
     // Uses the NPC constructor signature to avoid weaponRef dereference.
-    ShipRef ship = m_client->GetShip();
+    ShipItemRef ship = m_client->GetShip();
     if (ship.get() == nullptr) {
         sLog.Debug("CrimeWatch", "ApplyConcordPenalty() - %s(%u) no ship item, skipping.",
             m_client->GetName(), m_client->GetCharacterID());
@@ -103,7 +103,8 @@ void CrimeWatch::ApplyConcordPenalty()
 
     // Trigger fatal blow with 0 damage (ship HP already zeroed)
     ShipItemRef shipRef = m_client->GetShip();
-    Damage d(m_client->GetShipSE(), InventoryItemRef(shipRef.get()), 0, 0, 0, 0, 1.0f, 0);
+    InventoryItemRef wRef(shipRef.get());
+    Damage d(m_client->GetShipSE(), wRef, 0, 0, 0, 0, 1.0f, 0);
     shipSE->ApplyDamage(d);
 
     sLog.Log("CrimeWatch", "CONCORD destroyed %s(%u).",
