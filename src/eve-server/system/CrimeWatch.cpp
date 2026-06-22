@@ -4,6 +4,7 @@
 #include "ship/Ship.h"
 #include "system/SystemManager.h"
 #include "system/Damage.h"
+#include "eve-server.h"
 
 CrimeWatch::CrimeWatch(Client* pClient)
 : m_client(pClient),
