@@ -2,7 +2,6 @@
 #define EVEMU_SERVER_CRIMEWATCH_H_
 
 #include "eve-common.h"
-#include <vector>
 
 class Client;
 class NPC;
@@ -26,13 +25,10 @@ public:
     void OnAggression(Client* pTarget, float systemSecRating);
     void OnLooting();
     void ApplyConcordPenalty();
-    void ClearSentryGuns();
 
 protected:
     void SpawnConcordShips();
     void ClearConcordShips();
-    void SpawnSentryGuns(uint32 count);
-    void ApplySentryDamage();
 
 private:
     Client* m_client;
@@ -41,9 +37,7 @@ private:
     Timer m_weaponTimer;
     Timer m_concordTimer;
     Timer m_concordDamageTimer;
-    Timer m_sentryDamageTimer;
     std::vector<NPC*> m_concordShips;
-    std::vector<NPC*> m_sentryGuns;
 };
 
 #endif

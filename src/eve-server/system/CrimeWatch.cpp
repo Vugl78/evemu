@@ -9,19 +9,6 @@
 #include "inventory/ItemFactory.h"
 #include "system/SystemBubble.h"
 
-// Sentry gun typeIDs
-static const uint32 SENTRY_TYPEID = 3740; // Caldari Sentry Gun I
-
-// Sentry gun count by system sec
-static uint32 GetSentryCount(float systemSecRating) {
-    if (systemSecRating >= 0.5f) return 2;  // Highsec
-    if (systemSecRating > 0.0f) return 3;   // Lowsec
-    return 4; // Nullsec
-}
-
-// Sentry gun damage (100 DPS, split across 4 types)
-static const float SENTRY_DPS = 100.0f;
-
 // CONCORD ship typeIDs from EVE static data
 static const uint32 CONCORD_TYPEIDS[] = {
     1912, // Concord Police Battleship
@@ -35,15 +22,13 @@ CrimeWatch::CrimeWatch(Client* pClient)
   m_criminalTimer(sConfig.crime.CrimFlagTime * 1000),
   m_weaponTimer(sConfig.crime.WeaponFlagTime * 1000),
   m_concordTimer(0),
-  m_concordDamageTimer(0),
-  m_sentryDamageTimer(0)
+  m_concordDamageTimer(0)
 {
     m_aggressionTimer.Disable();
     m_criminalTimer.Disable();
     m_weaponTimer.Disable();
     m_concordTimer.Disable();
     m_concordDamageTimer.Disable();
-    m_sentryDamageTimer.Disable();
 }
 
 bool CrimeWatch::IsOutlaw() const
@@ -54,7 +39,6 @@ bool CrimeWatch::IsOutlaw() const
 CrimeWatch::~CrimeWatch()
 {
     ClearConcordShips();
-    ClearSentryGuns();
 }
 
 void CrimeWatch::Process()
@@ -217,82 +201,4 @@ void CrimeWatch::ApplyConcordPenalty()
     shipSE->ApplyDamage(d);
 
     m_client->SendNotifyMsg("CONCORD has destroyed your ship.");
-}
-
-void CrimeWatch::ClearSentryGuns()
-{
-    for (auto pNPC : m_sentryGuns) {
-        if (pNPC != nullptr) {
-            if (pNPC->SysBubble() != nullptr)
-                pNPC->SysBubble()->Remove(pNPC);
-            pNPC->SystemMgr()->RemoveEntity(pNPC);
-        }
-    }
-    m_sentryGuns.clear();
-    m_sentryDamageTimer.Disable();
-}
-
-void CrimeWatch::SpawnSentryGuns(uint32 count)
-{
-    if (!m_client->IsInSpace()) return;
-    if (m_client->GetShipSE() == nullptr) return;
-    SystemManager* sysMgr = m_client->SystemMgr();
-    if (sysMgr == nullptr) return;
-
-    ClearSentryGuns();
-    GPoint pos = m_client->GetShipSE()->GetPosition();
-    uint32 sysID = sysMgr->GetID();
-
-    FactionData faction;
-    faction.allianceID = 0;
-    faction.factionID = 500021;
-    faction.ownerID = 1000125;
-    faction.corporationID = 1000125;
-
-    for (uint32 i = 0; i < count; ++i) {
-        char name[64];
-        snprintf(name, sizeof(name), "Sentry Gun #%u", i + 1);
-        ItemData itemData(SENTRY_TYPEID, faction.ownerID, sysID, flagNone, name, pos);
-        InventoryItemRef iRef = sItemFactory.SpawnItem(itemData);
-        if (iRef.get() == nullptr) continue;
-
-        NPC* pNPC = new NPC(iRef, sysMgr->GetServiceMgr(), sysMgr, faction);
-        if (pNPC == nullptr || !pNPC->Load()) {
-            if (pNPC) delete pNPC;
-            continue;
-        }
-        GPoint gunPos = pos;
-        gunPos.x += (float)(MakeRandomInt(-5000, 5000));
-        gunPos.z += (float)(MakeRandomInt(-5000, 5000));
-        pNPC->DestinyMgr()->SetPosition(gunPos);
-        sysMgr->AddNPC(pNPC);
-        m_sentryGuns.push_back(pNPC);
-    }
-}
-
-void CrimeWatch::ApplySentryDamage()
-{
-    if (!m_client->IsInSpace()) return;
-    if (!m_aggressionTimer.Enabled() && !IsOutlaw()) return;
-    SystemEntity* shipSE = m_client->GetShipSE();
-    if (shipSE == nullptr) return;
-    ShipItemRef ship = m_client->GetShip();
-    if (ship.get() == nullptr) return;
-
-    // Find a sentry gun in this system to use as damage source
-    SystemEntity* sentrySource = nullptr;
-    if (m_client->SystemMgr() != nullptr) {
-        for (auto& [id, se] : m_client->SystemMgr()->GetEntities()) {
-            if (se != nullptr && se->IsSentrySE()) {
-                sentrySource = se;
-                break;
-            }
-        }
-    }
-    if (sentrySource == nullptr) sentrySource = shipSE; // fallback
-
-    // 100 DPS split across 4 damage types (25 each)
-    float dmg = SENTRY_DPS * 0.25f;
-    Damage d(sentrySource, InventoryItemRef(ship.get()), dmg, dmg, dmg, dmg, 1.0f, 0);
-    shipSE->ApplyDamage(d);
 }
