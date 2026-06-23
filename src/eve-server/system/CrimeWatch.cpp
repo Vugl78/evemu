@@ -9,8 +9,24 @@
 #include "inventory/ItemFactory.h"
 #include "system/SystemBubble.h"
 
+// Sentry gun typeIDs
+static const uint32 SENTRY_TYPEID = 3740; // Caldari Sentry Gun I
+
+// Sentry gun count by system sec
+static uint32 GetSentryCount(float systemSecRating) {
+    if (systemSecRating >= 0.5f) return 2;  // Highsec
+    if (systemSecRating > 0.0f) return 3;   // Lowsec
+    return 4; // Nullsec
+}
+
+// Sentry gun damage (100 DPS, split across 4 types)
+static const float SENTRY_DPS = 100.0f;
+
+// CONCORD ship typeIDs from EVE static data
 static const uint32 CONCORD_TYPEIDS[] = {
-    1912, 1914, 1918,
+    1912, // Concord Police Battleship
+    1914, // Concord Special Ops Battleship
+    1918, // Concord Army Battleship
 };
 
 CrimeWatch::CrimeWatch(Client* pClient)
@@ -19,18 +35,21 @@ CrimeWatch::CrimeWatch(Client* pClient)
   m_criminalTimer(sConfig.crime.CrimFlagTime * 1000),
   m_weaponTimer(sConfig.crime.WeaponFlagTime * 1000),
   m_concordTimer(0),
-  m_concordDamageTimer(0)
+  m_concordDamageTimer(0),
+  m_sentryDamageTimer(0)
 {
     m_aggressionTimer.Disable();
     m_criminalTimer.Disable();
     m_weaponTimer.Disable();
     m_concordTimer.Disable();
     m_concordDamageTimer.Disable();
+    m_sentryDamageTimer.Disable();
 }
 
 CrimeWatch::~CrimeWatch()
 {
     ClearConcordShips();
+    ClearSentryGuns();
 }
 
 void CrimeWatch::Process()
@@ -38,14 +57,23 @@ void CrimeWatch::Process()
     if (m_concordTimer.Enabled() and m_concordTimer.Check()) {
         m_concordTimer.Disable();
         SpawnConcordShips();
-        // Start damage delay after ships appear
         m_concordDamageTimer.Start(4000);
     }
     if (m_concordDamageTimer.Enabled() and m_concordDamageTimer.Check()) {
         m_concordDamageTimer.Disable();
         ApplyConcordPenalty();
-        // Clean up CONCORD ships after damage
         ClearConcordShips();
+    }
+
+    // Sentry gun DPS: 100 damage every second
+    if (m_sentryDamageTimer.Enabled() and m_sentryDamageTimer.Check()) {
+        ApplySentryDamage();
+        m_sentryDamageTimer.Start(1000);
+    }
+
+    // Cleanup sentry guns when aggression expires
+    if (!m_aggressionTimer.Enabled() and !m_sentryGuns.empty()) {
+        ClearSentryGuns();
     }
 
     if (m_aggressionTimer.Enabled()) m_aggressionTimer.Check();
@@ -92,7 +120,11 @@ void CrimeWatch::OnAggression(Client* pTarget, float systemSecRating)
     // Prevents docking and jumping
     m_aggressionTimer.Start(sConfig.crime.AggFlagTime * 1000);
 
-    // EVE: criminal flag + CONCORD only in highsec (>0.45)
+    // Spawn sentry guns (count varies by system sec)
+    SpawnSentryGuns(GetSentryCount(systemSecRating));
+    m_sentryDamageTimer.Start(1000);
+
+    // EVE: criminal flag + CONCORD only in highsec (>=0.5)
     if (systemSecRating >= 0.5f && !m_concordTimer.Enabled() && !m_concordDamageTimer.Enabled()) {
         if (!m_criminalTimer.Enabled()) {
             m_criminalTimer.Start(sConfig.crime.CrimFlagTime * 1000);
@@ -194,4 +226,70 @@ void CrimeWatch::ApplyConcordPenalty()
     shipSE->ApplyDamage(d);
 
     m_client->SendNotifyMsg("CONCORD has destroyed your ship.");
+}
+
+void CrimeWatch::ClearSentryGuns()
+{
+    for (auto pNPC : m_sentryGuns) {
+        if (pNPC != nullptr) {
+            if (pNPC->SysBubble() != nullptr)
+                pNPC->SysBubble()->Remove(pNPC);
+            pNPC->SystemMgr()->RemoveEntity(pNPC);
+        }
+    }
+    m_sentryGuns.clear();
+    m_sentryDamageTimer.Disable();
+}
+
+void CrimeWatch::SpawnSentryGuns(uint32 count)
+{
+    if (!m_client->IsInSpace()) return;
+    if (m_client->GetShipSE() == nullptr) return;
+    SystemManager* sysMgr = m_client->SystemMgr();
+    if (sysMgr == nullptr) return;
+
+    ClearSentryGuns();
+    GPoint pos = m_client->GetShipSE()->GetPosition();
+    uint32 sysID = sysMgr->GetID();
+
+    FactionData faction;
+    faction.allianceID = 0;
+    faction.factionID = 500021;
+    faction.ownerID = 1000125;
+    faction.corporationID = 1000125;
+
+    for (uint32 i = 0; i < count; ++i) {
+        char name[64];
+        snprintf(name, sizeof(name), "Sentry Gun #%u", i + 1);
+        ItemData itemData(SENTRY_TYPEID, faction.ownerID, sysID, flagNone, name, pos);
+        InventoryItemRef iRef = sItemFactory.SpawnItem(itemData);
+        if (iRef.get() == nullptr) continue;
+
+        NPC* pNPC = new NPC(iRef, sysMgr->GetServiceMgr(), sysMgr, faction);
+        if (pNPC == nullptr || !pNPC->Load()) {
+            if (pNPC) delete pNPC;
+            continue;
+        }
+        GPoint gunPos = pos;
+        gunPos.x += (float)(MakeRandomInt(-5000, 5000));
+        gunPos.z += (float)(MakeRandomInt(-5000, 5000));
+        pNPC->DestinyMgr()->SetPosition(gunPos);
+        sysMgr->AddNPC(pNPC);
+        m_sentryGuns.push_back(pNPC);
+    }
+}
+
+void CrimeWatch::ApplySentryDamage()
+{
+    if (!m_client->IsInSpace()) return;
+    if (!m_aggressionTimer.Enabled()) return;
+    SystemEntity* shipSE = m_client->GetShipSE();
+    if (shipSE == nullptr) return;
+    ShipItemRef ship = m_client->GetShip();
+    if (ship.get() == nullptr) return;
+
+    // 100 DPS split across 4 damage types (25 each)
+    float dmg = SENTRY_DPS * 0.25f;
+    Damage d(m_client->GetShipSE(), InventoryItemRef(ship.get()), dmg, dmg, dmg, dmg, 1.0f, 0);
+    shipSE->ApplyDamage(d);
 }

@@ -21,14 +21,17 @@ public:
     bool CanJump()          const { return !m_aggressionTimer.Enabled() && !m_weaponTimer.Enabled(); }
     bool IsConcordActive()  const { return m_concordTimer.Enabled() || m_concordDamageTimer.Enabled(); }
 
-    void OnWeaponFired();                        // Any weapon activation (NPC or player)
-    void OnAggression(Client* pTarget, float systemSecRating);  // PvP aggression
-    void OnLooting();                            // Looting from another player's container/wreck
+    void OnWeaponFired();
+    void OnAggression(Client* pTarget, float systemSecRating);
+    void OnLooting();
     void ApplyConcordPenalty();
+    void ClearSentryGuns();
 
 protected:
     void SpawnConcordShips();
     void ClearConcordShips();
+    void SpawnSentryGuns(uint32 count);
+    void ApplySentryDamage();
 
 private:
     Client* m_client;
@@ -37,7 +40,9 @@ private:
     Timer m_weaponTimer;
     Timer m_concordTimer;
     Timer m_concordDamageTimer;
+    Timer m_sentryDamageTimer;
     std::vector<NPC*> m_concordShips;
+    std::vector<NPC*> m_sentryGuns;
 };
 
 #endif
