@@ -2,6 +2,7 @@
 #define EVEMU_SERVER_CRIMEWATCH_H_
 
 #include "eve-common.h"
+#include <vector>
 
 class Client;
 class NPC;
@@ -10,7 +11,7 @@ class CrimeWatch
 {
 public:
     CrimeWatch(Client* pClient);
-    ~CrimeWatch() {}
+    ~CrimeWatch();
 
     void Process();
     bool IsAggressed()      const { return m_aggressionTimer.Enabled(); }
@@ -18,13 +19,14 @@ public:
     bool HasWeaponTimer()   const { return m_weaponTimer.Enabled(); }
     bool CanDock()          const { return !m_aggressionTimer.Enabled() && !m_weaponTimer.Enabled(); }
     bool CanJump()          const { return !m_aggressionTimer.Enabled(); }
-    bool IsConcordActive()  const { return m_concordTimer.Enabled(); }
+    bool IsConcordActive()  const { return m_concordTimer.Enabled() || m_concordDamageTimer.Enabled(); }
 
     void OnAggression(Client* pTarget, float systemSecRating);
     void ApplyConcordPenalty();
 
 protected:
     void SpawnConcordShips();
+    void ClearConcordShips();
 
 private:
     Client* m_client;
@@ -32,7 +34,8 @@ private:
     Timer m_criminalTimer;
     Timer m_weaponTimer;
     Timer m_concordTimer;
+    Timer m_concordDamageTimer;
     std::vector<NPC*> m_concordShips;
 };
 
-#endif  // EVEMU_SERVER_CRIMEWATCH_H_
+#endif
