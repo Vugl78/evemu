@@ -99,6 +99,11 @@ chargeRef(InventoryItemRef(nullptr))
 bool SystemEntity::ApplyDamage(Damage &d) {
     double profileStartTime(GetTimeUSeconds());
 
+    // Null source guard (e.g. sentry gun damage)
+    if (d.srcSE == nullptr) {
+        d.srcSE = this; // Damage originates from self (no attribution)
+    }
+
     if (is_log_enabled(DAMAGE__MESSAGE)) {
         if (d.srcSE->IsNPCSE()) {
             _log(DAMAGE__MESSAGE, "%s(%u): Initializing %.2f damage from NPC %s(%u) with K:%.3f, T:%.3f, EM:%.3f, E:%.3f",\
