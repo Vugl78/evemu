@@ -65,6 +65,13 @@ void CrimeWatch::ClearConcordShips()
     m_concordShips.clear();
 }
 
+void CrimeWatch::OnWeaponFired()
+{
+    // EVE: weapon timer = 60 seconds after ANY weapon use (NPC or player)
+    // Prevents docking and jumping during this time
+    m_weaponTimer.Start(60000);
+}
+
 void CrimeWatch::OnAggression(Client* pTarget, float systemSecRating)
 {
     if (pTarget == nullptr or pTarget == m_client)
@@ -72,15 +79,11 @@ void CrimeWatch::OnAggression(Client* pTarget, float systemSecRating)
     if (!sConfig.crime.Enabled)
         return;
 
-    if (m_weaponTimer.Enabled())
-        m_weaponTimer.Start(sConfig.crime.WeaponFlagTime * 1000);
-    else
-        m_weaponTimer.Start(sConfig.crime.WeaponFlagTime * 1000);
+    // EVE: aggression timer = 15 minutes after PvP aggression
+    // Prevents docking and jumping
+    m_aggressionTimer.Start(sConfig.crime.AggFlagTime * 1000);
 
-    if (!m_aggressionTimer.Enabled())
-        m_aggressionTimer.Start(sConfig.crime.AggFlagTime * 1000);
-
-    // Only trigger CONCORD once per crime, not on every weapon fire
+    // EVE: criminal flag + CONCORD only in highsec (>0.45)
     if (systemSecRating > 0.45f && !m_concordTimer.Enabled() && !m_concordDamageTimer.Enabled()) {
         if (!m_criminalTimer.Enabled()) {
             m_criminalTimer.Start(sConfig.crime.CrimFlagTime * 1000);

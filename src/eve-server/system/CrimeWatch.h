@@ -18,10 +18,11 @@ public:
     bool IsCriminal()       const { return m_criminalTimer.Enabled(); }
     bool HasWeaponTimer()   const { return m_weaponTimer.Enabled(); }
     bool CanDock()          const { return !m_aggressionTimer.Enabled() && !m_weaponTimer.Enabled(); }
-    bool CanJump()          const { return !m_aggressionTimer.Enabled(); }
+    bool CanJump()          const { return !m_aggressionTimer.Enabled() && !m_weaponTimer.Enabled(); }
     bool IsConcordActive()  const { return m_concordTimer.Enabled() || m_concordDamageTimer.Enabled(); }
 
-    void OnAggression(Client* pTarget, float systemSecRating);
+    void OnWeaponFired();                        // Any weapon activation (NPC or player)
+    void OnAggression(Client* pTarget, float systemSecRating);  // PvP aggression
     void ApplyConcordPenalty();
 
 protected:
