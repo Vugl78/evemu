@@ -298,10 +298,8 @@ void CrimeWatch::ApplySentryDamage()
     ShipItemRef ship = m_client->GetShip();
     if (ship.get() == nullptr) return;
 
-    // 100 DPS split across 4 damage types (25 each)
+    // 100 DPS as sentry gun damage
     float dmg = SENTRY_DPS * 0.25f;
-    // Use nullptr as source and weapon to avoid "self-damage" display
-    // Only sentry gun damage, not attributed to the player
-    Damage d(nullptr, InventoryItemRef(nullptr), dmg, dmg, dmg, dmg, 1.0f, 0);
+    Damage d(nullptr, InventoryItemRef(ship.get()), dmg, dmg, dmg, dmg, 1.0f, 0);
     shipSE->ApplyDamage(d);
 }
