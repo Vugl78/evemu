@@ -121,7 +121,7 @@ void CrimeWatch::SpawnConcordShips()
         }
 
         // Create NPC entity
-        NPC* pNPC = new NPC(iRef, *sysMgr->GetServiceMgr(), sysMgr, faction);
+        NPC* pNPC = new NPC(iRef, sysMgr->GetServiceMgr(), sysMgr, faction);
         if (pNPC == nullptr || !pNPC->Load()) {
             if (pNPC) delete pNPC;
             continue;
