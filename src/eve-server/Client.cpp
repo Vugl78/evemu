@@ -1416,44 +1416,47 @@ PyRep *Client::GetAggressors() const {
 void Client::StargateJump(uint32 fromGate, uint32 toGate) {
     if ((m_clientState != Player::State::Idle) or m_stateTimer.Enabled()) {
         sLog.Error("Client","%s: StargateJump called when a move is already pending. Ignoring.", m_char->name());
-        /** @todo  send error to client here */
         return;
+    }
+
+    // Get target gate data first for security check
+    StaticData toData = StaticData();
+    if (!sDataMgr.GetStaticInfo(toGate, toData)) {
+        _log(DATA__ERROR, "Failed to retrieve data for stargate %u", toGate);
+        return;
+    }
+
+    // Security check: prevent entry into systems where personal sec is too low
+    {
+        SystemData targetSys;
+        sDataMgr.GetSystemData(toData.systemID, targetSys);
+        float targetSec = targetSys.securityRating;
+        float personalSec = GetSecurityRating();
+        // EVE formula: min_sec = -(2.0 + (1.0 - systemSec) * 5.0)
+        float minSec = -(2.0f + (1.0f - targetSec) * 5.0f);
+        if (personalSec < minSec) {
+            SendNotifyMsg("Your security status (%.1f) is too low to enter %s (requires %.1f).",
+                personalSec, targetSys.name.c_str(), minSec);
+            return;
+        }
     }
 
     // add jump to mapDynamicData for showing in StarMap (F10)    -allan 06Mar14
     MapDB::AddJump(m_systemData.systemID);
 
-    // call Stop() per packet sniff - shuts off AP.  Halt() does also.  try not calling any movement updates
-    //pShipSE->DestinyMgr()->Halt();  // Stop() disables ap.  try Halt() to reset ship movement to null
     pShipSE->DestinyMgr()->SendJumpOut(fromGate);
-    //  show gate animation in from gate.   -working -allan 15Nov15
     pShipSE->DestinyMgr()->SendGateActivity(fromGate);
-
-    //m_toGate = toGate;
-    StaticData toData = StaticData();
-    if (!sDataMgr.GetStaticInfo(toGate, toData)) {
-        _log(DATA__ERROR, "Failed to retrieve data for stargate %u", toGate);
-        /** @todo  send error to client here */
-        return;
-    }
 
     // this is where we can put the msgs about system closed or w/e
 
     // add jump to mapDynamicData for showing in StarMap (F10)    -allan 06Mar14
     MapDB::AddJump(toData.systemID);
-    // used for showing Visited Systems in StarMap(F10)  -allan 30Jan14
     m_char->VisitSystem(toData.systemID);
 
     m_movePoint = toData.position;
-    // Make Jump-In point a random spot on ~10km radius sphere about the stargate radius
     m_movePoint.MakeRandomPointOnSphereLayer(toData.radius + 6500, toData.radius + 9500);
     m_moveSystemID = toData.systemID;
-/*
-    char ci[25];
-    snprintf(ci, sizeof(ci), "Jumping:%u", toGate);
-    m_ship->SetCustomInfo(ci);
-*/
-    //delay the move 4sec so they can see the JumpOut animation
+
     SetStateTimer(Player::State::Jump, Player::Timer::Jumping);
 }
 
@@ -1531,22 +1534,6 @@ void Client::ExecuteJump() {
 
     //OnScannerInfoRemoved  - no args.  flushes current scan data in client
     SendNotification("OnScannerInfoRemoved", "charid", new PyTuple(0), true);  // this is sequenced
-
-    // Security check: prevent entry into systems where personal sec is too low
-    SystemData targetSystem;
-    if (sDataMgr.GetSystemData(m_moveSystemID, targetSystem)) {
-        float targetSec = targetSystem.securityRating;
-        float personalSec = GetSecurityRating();
-        // EVE formula: min_sec = -(2.0 + (1.0 - systemSec) * 5.0)
-        float minSec = -(2.0f + (1.0f - targetSec) * 5.0f);
-        if (personalSec < minSec) {
-            SendNotifyMsg("Your security status (%.1f) is too low to enter %s (requires %.1f).",
-                personalSec, targetSystem.name.c_str(), minSec);
-            m_clientState = Player::State::Idle;
-            return;
-        }
-    }
-
     pShipSE->Jump();
 
     MoveToLocation(m_moveSystemID, m_movePoint);
