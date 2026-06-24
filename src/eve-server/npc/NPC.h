@@ -36,6 +36,7 @@ class DestinyManager;
 class InventoryItem;
 class Missile;
 class NPCAIMgr;
+class ConvoyAI;
 class SystemManager;
 
 class NPC
@@ -86,6 +87,7 @@ public:
 
 protected:
     NPCAIMgr* m_AI;
+    ConvoyAI* m_convoyAI;  // non-null for convoy NPCs
     SpawnMgr* m_spawnMgr;
 
 private:

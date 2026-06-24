@@ -1859,3 +1859,54 @@ void SystemManager::SpawnSentryGuns()
         }
     }
 }
+
+void SystemManager::SpawnConvoys()
+{
+    float sec = m_data.securityRating;
+    if (sec < 0.5f || sec > 0.7f) return;
+
+    std::vector<uint32> stationIDs;
+    for (auto& [id, pSE] : m_staticEntities) {
+        if (pSE != nullptr && pSE->GetSelf()->groupID() == EVEDB::invGroups::Station)
+            stationIDs.push_back(id);
+    }
+    if (stationIDs.size() < 2) return;
+
+    uint32 idxA = (uint32)MakeRandomInt(0, stationIDs.size() - 1);
+    uint32 idxB = (idxA + 1 + (uint32)MakeRandomInt(0, stationIDs.size() - 2)) % stationIDs.size();
+    uint32 stationA = stationIDs[idxA], stationB = stationIDs[idxB];
+    GPoint posA = m_staticEntities[stationA]->GetPosition();
+
+    FactionData faction;
+    faction.allianceID = 0; faction.factionID = 500021;
+    faction.ownerID = 1000125; faction.corporationID = 1000125;
+
+    GPoint haulerPos = posA;
+    haulerPos.x += (float)MakeRandomInt(-5000, 5000); haulerPos.z += (float)MakeRandomInt(-5000, 5000);
+    ItemData haulerData(10826, faction.ownerID, m_data.systemID, flagNone, "Convoy Hauler", haulerPos);
+    InventoryItemRef haulerRef = sItemFactory.SpawnItem(haulerData);
+    if (haulerRef.get() != nullptr) {
+        NPC* hauler = new NPC(haulerRef, m_services, this, faction);
+        if (hauler && hauler->Load()) {
+            hauler->m_convoyAI = new ConvoyAI(hauler, stationA, stationB);
+            hauler->DestinyMgr()->SetPosition(haulerPos);
+            AddNPC(hauler);
+        } else if (hauler) delete hauler;
+    }
+
+    uint32 escortCount = 2 + (MakeRandomInt(0, 1) ? 1 : 0);
+    for (uint32 i = 0; i < escortCount; ++i) {
+        GPoint guardPos = posA;
+        guardPos.x += (float)MakeRandomInt(-6000, 6000); guardPos.z += (float)MakeRandomInt(-6000, 6000);
+        ItemData guardData(11001, faction.ownerID, m_data.systemID, flagNone, "Convoy Guard", guardPos);
+        InventoryItemRef guardRef = sItemFactory.SpawnItem(guardData);
+        if (guardRef.get() != nullptr) {
+            NPC* guard = new NPC(guardRef, m_services, this, faction);
+            if (guard && guard->Load()) {
+                guard->DestinyMgr()->SetPosition(guardPos);
+                AddNPC(guard);
+            } else if (guard) delete guard;
+        }
+    }
+    _log(SERVER__INIT, "Convoy spawned in %s(%u) route %u-%u", m_data.name.c_str(), m_data.systemID, stationA, stationB);
+}

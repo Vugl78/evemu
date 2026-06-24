@@ -31,6 +31,7 @@
 #include "EntityList.h"
 #include "map/MapDB.h"
 #include "npc/NPC.h"
+#include "npc/ConvoyAI.h"
 #include "npc/NPCAI.h"
 #include "system/Container.h"
 #include "system/Damage.h"
@@ -40,6 +41,7 @@
 NPC::NPC(InventoryItemRef self, EVEServiceManager& services, SystemManager* system, const FactionData& data, SpawnMgr* spawnMgr)
 : DynamicSystemEntity(self, services, system),
 m_spawnMgr(spawnMgr),
+m_convoyAI(nullptr),
 m_AI(new NPCAIMgr(this))
 {
     m_allyID = data.allianceID;
@@ -76,6 +78,7 @@ m_AI(new NPCAIMgr(this))
 
 NPC::~NPC() {
     SafeDelete(m_AI);
+    SafeDelete(m_convoyAI);
 }
 
 bool NPC::Load()
@@ -98,6 +101,7 @@ void NPC::Process() {
     SystemEntity::Process();
 
     m_AI->Process();
+    if (m_convoyAI != nullptr) m_convoyAI->Process();
 
     if (sConfig.debug.UseProfiling)
         sProfiler.AddTime(Profile::npc, GetTimeUSeconds() - profileStartTime);
