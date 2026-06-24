@@ -22,6 +22,11 @@ RUN apt-get update && \
     ccache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Create symlinks for MariaDB → MySQL compatibility (FindMySQL looks for mysql.h/libmysqlclient)
+RUN ln -s /usr/include/mariadb /usr/include/mysql \
+    && ln -s /usr/lib/x86_64-linux-gnu/libmariadb.so /usr/lib/x86_64-linux-gnu/libmysqlclient.so \
+    && ln -s /usr/lib/x86_64-linux-gnu/libmariadb.so /usr/lib/x86_64-linux-gnu/libmysqlclient_r.so
+
 # Build stage
 FROM base AS app-build
 
