@@ -82,6 +82,10 @@ void NPC::OnAttacked(SystemEntity* attacker)
     if (m_killed || attacker == nullptr)
         return;
 
+    // Notify convoy group of attack (triggers defensive AI)
+    if (m_convoyAI != nullptr)
+        m_convoyAI->NotifyAttacked();
+
     // Distress call — broadcast to all players in system
     if (m_system != nullptr && attacker->HasPilot()) {
         std::vector<Client*> clients;

@@ -1882,54 +1882,71 @@ void SystemManager::SpawnConvoys()
     faction.allianceID = 0; faction.factionID = 500021;
     faction.ownerID = 1000125; faction.corporationID = 1000125;
 
-    // Create shared convoy group (chain: lead guard, hauler, tail guard)
+    // Create shared convoy group
     ConvoyGroup* group = new ConvoyGroup(stationA, stationB);
 
-    // Lead guard (index 0)
-    GPoint guard1Pos = posA;
-    guard1Pos.x += (float)MakeRandomInt(-3000, 3000); guard1Pos.z += (float)MakeRandomInt(-3000, 3000);
-    ItemData guard1Data(11001, faction.ownerID, m_data.systemID, flagNone, "Convoy Lead Guard", guard1Pos);
-    InventoryItemRef guard1Ref = sItemFactory.SpawnItem(guard1Data);
-    if (guard1Ref.get() != nullptr) {
-        NPC* guard = new NPC(guard1Ref, m_services, this, faction);
-        if (guard && guard->Load()) {
-            guard->SetConvoyAI(new ConvoyAI(guard, group, 0));
-            guard->DestinyMgr()->SetPosition(guard1Pos);
-            AddNPC(guard);
-            group->members.push_back(guard);
-        } else if (guard) delete guard;
+    uint32 numGuards = 2 + (uint32)MakeRandomInt(0, 4); // 2-6
+    uint32 numHaulers = 3 + (uint32)MakeRandomInt(0, 7); // 3-10
+
+    char nameBuf[64];
+
+    // Front guards
+    uint32 frontGuards = numGuards / 2 + (numGuards % 2); // ceil
+    for (uint32 i = 0; i < frontGuards; ++i) {
+        GPoint p = posA;
+        p.x += (float)MakeRandomInt(-3000, 3000); p.z += (float)MakeRandomInt(-3000, 3000);
+        snprintf(nameBuf, sizeof(nameBuf), "Convoy Guard %u", i + 1);
+        ItemData idata(11001, faction.ownerID, m_data.systemID, flagNone, nameBuf, p);
+        InventoryItemRef iref = sItemFactory.SpawnItem(idata);
+        if (iref.get() != nullptr) {
+            NPC* npc = new NPC(iref, m_services, this, faction);
+            if (npc && npc->Load()) {
+                npc->SetConvoyAI(new ConvoyAI(npc, group, (uint32)group->members.size()));
+                npc->DestinyMgr()->SetPosition(p);
+                AddNPC(npc);
+                group->members.push_back(npc);
+            } else if (npc) delete npc;
+        }
     }
 
-    // Hauler (index 1)
-    GPoint haulerPos = posA;
-    haulerPos.x += (float)MakeRandomInt(-3000, 3000); haulerPos.z += (float)MakeRandomInt(-3000, 3000);
-    ItemData haulerData(10826, faction.ownerID, m_data.systemID, flagNone, "Convoy Hauler", haulerPos);
-    InventoryItemRef haulerRef = sItemFactory.SpawnItem(haulerData);
-    if (haulerRef.get() != nullptr) {
-        NPC* hauler = new NPC(haulerRef, m_services, this, faction);
-        if (hauler && hauler->Load()) {
-            hauler->SetConvoyAI(new ConvoyAI(hauler, group, 1));
-            hauler->DestinyMgr()->SetPosition(haulerPos);
-            AddNPC(hauler);
-            group->members.push_back(hauler);
-        } else if (hauler) delete hauler;
+    // Haulers
+    for (uint32 i = 0; i < numHaulers; ++i) {
+        GPoint p = posA;
+        p.x += (float)MakeRandomInt(-3000, 3000); p.z += (float)MakeRandomInt(-3000, 3000);
+        snprintf(nameBuf, sizeof(nameBuf), "Convoy Hauler %u", i + 1);
+        ItemData idata(10826, faction.ownerID, m_data.systemID, flagNone, nameBuf, p);
+        InventoryItemRef iref = sItemFactory.SpawnItem(idata);
+        if (iref.get() != nullptr) {
+            NPC* npc = new NPC(iref, m_services, this, faction);
+            if (npc && npc->Load()) {
+                npc->SetConvoyAI(new ConvoyAI(npc, group, (uint32)group->members.size()));
+                npc->DestinyMgr()->SetPosition(p);
+                AddNPC(npc);
+                group->members.push_back(npc);
+            } else if (npc) delete npc;
+        }
     }
 
-    // Tail guard (index 2)
-    GPoint guard2Pos = posA;
-    guard2Pos.x += (float)MakeRandomInt(-3000, 3000); guard2Pos.z += (float)MakeRandomInt(-3000, 3000);
-    ItemData guard2Data(11001, faction.ownerID, m_data.systemID, flagNone, "Convoy Tail Guard", guard2Pos);
-    InventoryItemRef guard2Ref = sItemFactory.SpawnItem(guard2Data);
-    if (guard2Ref.get() != nullptr) {
-        NPC* guard = new NPC(guard2Ref, m_services, this, faction);
-        if (guard && guard->Load()) {
-            guard->SetConvoyAI(new ConvoyAI(guard, group, 2));
-            guard->DestinyMgr()->SetPosition(guard2Pos);
-            AddNPC(guard);
-            group->members.push_back(guard);
-        } else if (guard) delete guard;
+    // Rear guards
+    uint32 rearGuards = numGuards - frontGuards;
+    for (uint32 i = 0; i < rearGuards; ++i) {
+        GPoint p = posA;
+        p.x += (float)MakeRandomInt(-3000, 3000); p.z += (float)MakeRandomInt(-3000, 3000);
+        snprintf(nameBuf, sizeof(nameBuf), "Convoy Rear Guard %u", i + 1);
+        ItemData idata(11001, faction.ownerID, m_data.systemID, flagNone, nameBuf, p);
+        InventoryItemRef iref = sItemFactory.SpawnItem(idata);
+        if (iref.get() != nullptr) {
+            NPC* npc = new NPC(iref, m_services, this, faction);
+            if (npc && npc->Load()) {
+                npc->SetConvoyAI(new ConvoyAI(npc, group, (uint32)group->members.size()));
+                npc->DestinyMgr()->SetPosition(p);
+                AddNPC(npc);
+                group->members.push_back(npc);
+            } else if (npc) delete npc;
+        }
     }
 
-    _log(SERVER__INIT, "Convoy spawned in %s(%u) route %u-%u (%u members)",
-         m_data.name.c_str(), m_data.systemID, stationA, stationB, group->members.size());
+    _log(SERVER__INIT, "Convoy spawned in %s(%u) route %u-%u (%u ships: %u guards, %u haulers)",
+         m_data.name.c_str(), m_data.systemID, stationA, stationB,
+         group->members.size(), numGuards, numHaulers);
 }
