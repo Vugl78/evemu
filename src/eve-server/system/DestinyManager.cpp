@@ -859,6 +859,9 @@ void DestinyManager::MoveObject() {
             }
         } else if (m_tractored or m_tractorPause) {
             ;   // do nothing here.  this is to remove error reporting from next line.
+        } else if (!m_userSpeedFraction and !m_prevSpeedFraction) {
+            // no movement requested and no residual speed - safe to halt
+            Halt();
         } else {
             sLog.Error("Destiny::MoveObject()", "%s(%u) - move checks are not set right. Acc:%s, Dec:%s, Turn:%s, Tic:%u, Tractored:%s, TractorPause:%s", \
                     mySE->GetName(), mySE->GetID(), (m_accel ? "True" : "False"), (m_decel ? "True" : "False"), (m_turning ? "True" : "False"), \
