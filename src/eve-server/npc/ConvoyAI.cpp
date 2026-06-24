@@ -19,7 +19,7 @@ ConvoyAI::~ConvoyAI()
 
 void ConvoyAI::Process()
 {
-    if (m_npc == nullptr || m_npc->IsWarping() || m_npc->DestinyMgr() == nullptr)
+    if (m_npc == nullptr || m_npc->DestinyMgr() == nullptr || m_npc->DestinyMgr()->IsWarping())
         return;
 
     switch (m_state) {
