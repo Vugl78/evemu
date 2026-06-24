@@ -462,7 +462,8 @@ bool SystemManager::LoadSystemStatics() {
     entities.clear();
 
     // Spawn sentry guns at gates and stations
-    SpawnSentryGuns();
+    // TODO: disabled - Sentry::EncodeDestiny causes client BallNotInPark
+    // SpawnSentryGuns();
     SpawnConvoys();
 
     return true;
