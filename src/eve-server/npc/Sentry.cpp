@@ -28,7 +28,7 @@ Sentry::Sentry(InventoryItemRef self, EVEServiceManager& services, SystemManager
     m_AI = new SentryAI(this);
 
     // Create default dynamic attributes in the AttributeMap:
-    m_self->SetAttribute(AttrInertia,             EvilOne, false);
+    m_self->SetAttribute(AttrInetia,              1.0f, false);
     m_self->SetAttribute(AttrDamage,              EvilZero, false);
     m_self->SetAttribute(AttrArmorDamage,         EvilZero, false);
     m_self->SetAttribute(AttrMass,                m_self->type().mass(), false);
@@ -37,6 +37,8 @@ Sentry::Sentry(InventoryItemRef self, EVEServiceManager& services, SystemManager
     m_self->SetAttribute(AttrCapacity,            m_self->type().capacity(), false);
     m_self->SetAttribute(AttrShieldCharge,        m_self->GetAttribute(AttrShieldCapacity), false);
     m_self->SetAttribute(AttrCapacitorCharge,     m_self->GetAttribute(AttrCapacitorCapacity), false);
+    m_self->SetAttribute(AttrArmorHP,             100000.0f, false);
+    m_self->SetAttribute(AttrHP,                  100000.0f, false);
 
     SetResists();
 

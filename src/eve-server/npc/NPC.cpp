@@ -51,7 +51,7 @@ m_AI(new NPCAIMgr(this))
     m_ownerID = data.ownerID;
 
     // Create default dynamic attributes in the AttributeMap:
-    m_self->SetAttribute(AttrInetia,             1.0f, false);
+    m_self->SetAttribute(AttrInetia,              1.0f, false);
     m_self->SetAttribute(AttrDamage,              EvilZero, false);
     m_self->SetAttribute(AttrArmorDamage,         EvilZero, false);
     m_self->SetAttribute(AttrWarpCapacitorNeed,   0.00001, false);
@@ -62,6 +62,9 @@ m_AI(new NPCAIMgr(this))
     m_self->SetAttribute(AttrShieldCharge,        m_self->GetAttribute(AttrShieldCapacity), false);
     m_self->SetAttribute(AttrCapacitorCharge,     m_self->GetAttribute(AttrCapacitorCapacity), false);
     m_self->SetAttribute(AttrWarpSpeedMultiplier, 1.0f, false);
+    // Ensure armor and hull HP are set (prevents NaN in MakeDamageState)
+    m_self->SetAttribute(AttrArmorHP,             10000.0f, false);
+    m_self->SetAttribute(AttrHP,                  10000.0f, false);
 
     /* Gets the value from the NPC and put on our own vars */
     m_emDamage = m_self->GetAttribute(AttrEmDamage).get_float(),
