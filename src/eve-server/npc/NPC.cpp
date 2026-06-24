@@ -106,7 +106,8 @@ NPC::~NPC() {
 bool NPC::IsConvoy() const
 {
     uint32 gid = m_self->groupID();
-    return gid == EVEDB::invGroups::Convoy || gid == EVEDB::invGroups::Convoy_Drone;
+    return gid == EVEDB::invGroups::Convoy || gid == EVEDB::invGroups::Convoy_Drone
+        || gid == EVEDB::invGroups::Mission_Faction_Industrials;
 }
 
 bool NPC::IsConvoyUnderAttack() const

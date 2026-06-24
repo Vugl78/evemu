@@ -1890,9 +1890,13 @@ void SystemManager::SpawnConvoys()
     // Create shared convoy group
     ConvoyGroup* group = new ConvoyGroup(stationA, stationB);
 
-    // Test: single NPC with player ship typeID
-    uint32 numGuards = 0;
-    uint32 numHaulers = 1;
+    // Guards: group 298 (Convoy_Drone) — 10999=Escort, 11000=Protector, 11001=Guard, 11002=Sentry
+    // Haulers: group 927 (Industrial) — 2878=Federation, 2883=State
+    uint32 guardTypeIDs[] = { 10999, 11000, 11001, 11002 };
+    uint32 haulerTypeIDs[] = { 2878, 2883 };
+
+    uint32 numGuards = 2 + (uint32)MakeRandomInt(0, 4);
+    uint32 numHaulers = 3 + (uint32)MakeRandomInt(0, 7);
 
     char nameBuf[64];
     uint32 index = 0;
@@ -1918,15 +1922,15 @@ void SystemManager::SpawnConvoys()
 
     // Front guards
     for (uint32 i = 0; i < numGuards / 2 + (numGuards % 2); ++i)
-        spawnShip(11001, "Convoy Guard", index);
+        spawnShip(guardTypeIDs[MakeRandomInt(0, 3)], "Convoy Guard", index);
 
-    // Haulers (using player ship typeID 26510 for testing)
+    // Haulers
     for (uint32 i = 0; i < numHaulers; ++i)
-        spawnShip(26510, "Convoy Hauler", index);
+        spawnShip(haulerTypeIDs[MakeRandomInt(0, 1)], "Convoy Hauler", index);
 
     // Rear guards
     for (uint32 i = 0; i < numGuards / 2; ++i)
-        spawnShip(11001, "Convoy Rear Guard", index);
+        spawnShip(guardTypeIDs[MakeRandomInt(0, 3)], "Convoy Rear Guard", index);
 
     _log(SERVER__INIT, "Convoy spawned in %s(%u) route %u->%u (%u ships: %u guards, %u haulers) at departure point",
          m_data.name.c_str(), m_data.systemID, stationA, stationB,
