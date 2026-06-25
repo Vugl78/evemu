@@ -31,7 +31,6 @@ void ConvoyGroup::WakeUpAll(SystemEntity* attacker)
     for (NPC* npc : members) {
         if (npc != nullptr && !npc->IsDead() && npc->GetAIMgr() != nullptr) {
             npc->GetAIMgr()->WakeUp();
-            // Directly tell the NPC about the attacker
             if (attacker != nullptr)
                 npc->GetAIMgr()->Targeted(attacker);
         }
@@ -42,7 +41,6 @@ ConvoyAI::ConvoyAI(NPC* who, ConvoyGroup* group, uint32 idx)
 : m_npc(who), m_group(group), m_index(idx), m_startTimer(nullptr)
 {
     m_group->refCount++;
-    // Each ship starts with a staggered delay: 15-45s * (index + 1)
     uint32 interval = 15000 + MakeRandomInt(0, 30000);
     m_startTimer = new Timer(interval * (idx + 1));
     m_startTimer->Start(interval * (idx + 1));
@@ -75,9 +73,7 @@ GPoint ConvoyAI::GetDeparturePoint()
     GPoint dstPos = GetStationPosition(dst);
     GVector dir(srcPos, dstPos);
     dir.normalize();
-    // Base departure point at 150km
     GPoint dep = srcPos + (dir * 150000.0);
-    // Chain offset: lower index = front (toward destination), higher index = rear (near station)
     double behind = (double)m_index * 2500.0;
     return GPoint(dep.x - dir.x * behind, dep.y, dep.z - dir.z * behind);
 }
@@ -95,34 +91,21 @@ void ConvoyAI::Process()
     uint32 targetStation = m_group->goToB ? m_group->stationB : m_group->stationA;
     GPoint depPoint = GetDeparturePoint();
 
-    // Phase 0: waiting for staggered start timer
     if (phase == 0) {
-        if (!m_startTimer->Enabled()) {
-            // Timer already fired
-            if (m_index == 0) {
-                dest->GotoPoint(depPoint);
-            } else {
-                // Follow the preceding ship
-                NPC* lead = m_group->members[m_index - 1];
-                if (lead != nullptr && !lead->IsDead())
-                    dest->Follow(lead, 2500);
-            }
-        } else if (m_startTimer->Check()) {
-            // Timer just expired — start departure
-            if (m_index == 0) {
-                dest->GotoPoint(depPoint);
-            } else {
-                NPC* lead = m_group->members[m_index - 1];
-                if (lead != nullptr && !lead->IsDead())
-                    dest->Follow(lead, 2500);
-            }
-            if (m_index > 0)
-                m_group->phase = 1;
+        if (m_startTimer->Enabled() && !m_startTimer->Check())
+            return;
+        if (m_index == 0) {
+            dest->GotoPoint(depPoint);
+        } else {
+            NPC* lead = m_group->members[m_index - 1];
+            if (lead != nullptr && !lead->IsDead())
+                dest->Follow(lead, 2500);
         }
+        if (m_index > 0 && !m_startTimer->Enabled())
+            m_group->phase = 1;
         return;
     }
 
-    // Phase 1: en route to departure point
     if (phase == 1) {
         if (m_index == 0) {
             double dist = m_npc->GetPosition().distance(depPoint);
@@ -133,24 +116,23 @@ void ConvoyAI::Process()
             if (lead != nullptr && !lead->IsDead())
                 dest->Follow(lead, 2500);
         }
-        // Last ship arrival triggers group warp
         if (m_index == m_group->members.size() - 1) {
             double dist = m_npc->GetPosition().distance(depPoint);
             if (dist < 5000.0) {
-            for (NPC* member : m_group->members) {
-                if (member != nullptr && !member->IsDead() && member->DestinyMgr() != nullptr) {
-                    GPoint targetPos = GetStationPosition(targetStation);
-                    GVector dir(member->GetPosition(), targetPos);
-                    dir.normalize();
-                    member->DestinyMgr()->WarpTo(targetPos - (dir * 18000.0));
+                for (NPC* member : m_group->members) {
+                    if (member != nullptr && !member->IsDead() && member->DestinyMgr() != nullptr) {
+                        GPoint targetPos = GetStationPosition(targetStation);
+                        GVector dir(member->GetPosition(), targetPos);
+                        dir.normalize();
+                        member->DestinyMgr()->WarpTo(targetPos - (dir * 18000.0));
+                    }
                 }
+                m_group->phase = 2;
             }
-            m_group->phase = 2;
         }
         return;
     }
 
-    // Phase 2: arrived at destination
     if (phase == 2) {
         double dist = m_npc->GetPosition().distance(GetStationPosition(targetStation));
         if (dist < 100000.0) {
@@ -163,7 +145,6 @@ void ConvoyAI::Process()
         return;
     }
 
-    // Phase 3: waiting, then return trip
     if (phase == 3) {
         if (m_index == 0 && m_group->phaseTimer != nullptr && m_group->phaseTimer->Check()) {
             SafeDelete(m_group->phaseTimer);
