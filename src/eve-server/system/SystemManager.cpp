@@ -462,8 +462,7 @@ bool SystemManager::LoadSystemStatics() {
     entities.clear();
 
     // Spawn sentry guns at gates and stations
-    // TODO: re-enable after binary stream investigation
-    // SpawnSentryGuns();
+    SpawnSentryGuns();
     SpawnConvoys();
 
     return true;
@@ -1912,9 +1911,9 @@ void SystemManager::SpawnConvoys()
         if (iref.get() != nullptr) {
             NPC* npc = new NPC(iref, m_services, this, faction);
             if (npc && npc->Load()) {
-                npc->SetConvoyAI(new ConvoyAI(npc, group, idx));
-                npc->DestinyMgr()->SetPosition(p);
                 AddNPC(npc);
+                npc->DestinyMgr()->SetPosition(p);
+                npc->SetConvoyAI(new ConvoyAI(npc, group, idx));
                 group->members.push_back(npc);
                 idx++;
             } else if (npc) delete npc;
