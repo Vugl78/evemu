@@ -179,7 +179,79 @@ void NPC::TargetedAdd(SystemEntity *who) {
 
 void NPC::EncodeDestiny( Buffer& into )
 {
-    DynamicSystemEntity::EncodeDestiny(into);
+    // Custom EncodeDestiny: uses GetState() for mode (unlike DSE which always hardcodes STOP)
+    // but only flags = IsFree (0x01) without IsMassive, matching DSE's working binary format.
+    using namespace Destiny;
+
+    uint8 mode = m_destiny->GetState();
+
+    BallHeader head = BallHeader();
+        head.entityID = GetID();
+        head.mode = mode;
+        head.radius = GetRadius();
+        head.posX = x();
+        head.posY = y();
+        head.posZ = z();
+        head.flags = Ball::Flag::IsFree;
+    into.Append( head );
+    MassSector mass = MassSector();
+        mass.mass = m_destiny->GetMass();
+        mass.cloak = (m_destiny->IsCloaked() ? 1 : 0);
+        mass.harmonic = m_harmonic;
+        mass.corporationID = m_corpID;
+        mass.allianceID = (IsAlliance(m_allyID) ? m_allyID : -1);
+    into.Append( mass );
+    DataSector data = DataSector();
+        data.maxSpeed = m_destiny->GetMaxVelocity();
+        data.velX = m_destiny->GetVelocity().x;
+        data.velY = m_destiny->GetVelocity().y;
+        data.velZ = m_destiny->GetVelocity().z;
+        data.inertia = m_destiny->GetInertia();
+        data.speedfraction = m_destiny->GetSpeedFraction();
+    into.Append( data );
+    switch (mode) {
+        case Ball::Mode::WARP: {
+            GPoint target = m_destiny->GetTargetPoint();
+            WARP_Struct warp;
+                warp.formationID = 0xFF;
+                warp.targX = target.x;
+                warp.targY = target.y;
+                warp.targZ = target.z;
+                warp.speed = m_destiny->GetWarpSpeed();
+                warp.effectStamp = -1;
+                warp.followRange = 0;
+                warp.followID = 0;
+            into.Append( warp );
+        }  break;
+        case Ball::Mode::FOLLOW: {
+            FOLLOW_Struct follow;
+                follow.followID = m_destiny->GetTargetID();
+                follow.followRange = m_destiny->GetFollowDistance();
+                follow.formationID = 0xFF;
+            into.Append( follow );
+        }  break;
+        case Ball::Mode::ORBIT: {
+            ORBIT_Struct orbit;
+                orbit.targetID = m_destiny->GetTargetID();
+                orbit.followRange = m_destiny->GetFollowDistance();
+                orbit.formationID = 0xFF;
+            into.Append( orbit );
+        }  break;
+        case Ball::Mode::GOTO: {
+            GPoint target = m_destiny->GetTargetPoint();
+            GOTO_Struct go;
+                go.formationID = 0xFF;
+                go.x = target.x;
+                go.y = target.y;
+                go.z = target.z;
+            into.Append( go );
+        }  break;
+        default: {
+            STOP_Struct main;
+                main.formationID = 0xFF;
+            into.Append( main );
+        } break;
+    }
 }
 
 void NPC::UseShieldRecharge()
