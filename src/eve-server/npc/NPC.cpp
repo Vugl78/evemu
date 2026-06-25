@@ -88,7 +88,7 @@ m_AI(new NPCAIMgr(this))
         if (!m_self->HasAttribute(AttrEntityFlyRange))
             m_self->SetAttribute(AttrEntityFlyRange,  50000.0f, false);
         if (!m_self->HasAttribute(AttrMaxRange))
-            m_self->SetAttribute(AttrMaxRange,        50000.0f, false);
+            m_self->SetAttribute(AttrMaxRange,        250000.0f, false);
         if (!m_self->HasAttribute(AttrFalloff))
             m_self->SetAttribute(AttrFalloff,         15000.0f, false);
         if (!m_self->HasAttribute(AttrTrackingSpeed))
@@ -116,9 +116,9 @@ m_AI(new NPCAIMgr(this))
         if (!m_self->HasAttribute(AttrEntityFlyRange))
             m_self->SetAttribute(AttrEntityFlyRange,  30000.0f, false);
         if (!m_self->HasAttribute(AttrMaxRange))
-            m_self->SetAttribute(AttrMaxRange,        30000.0f, false);
+            m_self->SetAttribute(AttrMaxRange,        250000.0f, false);
         if (!m_self->HasAttribute(AttrFalloff))
-            m_self->SetAttribute(AttrFalloff,         10000.0f, false);
+            m_self->SetAttribute(AttrFalloff,         50000.0f, false);
         if (!m_self->HasAttribute(AttrTrackingSpeed))
             m_self->SetAttribute(AttrTrackingSpeed,   0.1f, false);
         if (!m_self->HasAttribute(AttrOptimalSigRadius))
