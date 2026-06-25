@@ -61,7 +61,11 @@ GPoint ConvoyAI::GetDeparturePoint()
     GPoint dstPos = GetStationPosition(dst);
     GVector dir(srcPos, dstPos);
     dir.normalize();
-    return srcPos + (dir * 150000.0);
+    // Base departure point at 150km
+    GPoint dep = srcPos + (dir * 150000.0);
+    // Chain offset: each ship targets a point slightly behind based on index (2500m spacing)
+    double behind = (double)(m_group->members.size() - 1 - m_index) * 2500.0;
+    return GPoint(dep.x - dir.x * behind, dep.y, dep.z - dir.z * behind);
 }
 
 void ConvoyAI::Process()
