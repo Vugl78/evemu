@@ -81,6 +81,7 @@ public:
     void DisableWarpOutTimer()                          { m_warpOutTimer.Disable(); }
     void WarpOutComplete()                              { m_warpOutTimer.Disable(); m_state = NPCAI::State::Idle; }
     void WakeUp(); // Force target search on next tick
+    void StartAttackCycle(uint32 intervalMs); // Force attack timer
 
     void LaunchMissile(uint16 typeID, SystemEntity* pTargSE);   // us to them
     void MissileLaunched(Missile* pMissile); // them to us

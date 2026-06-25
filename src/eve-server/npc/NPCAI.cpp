@@ -380,6 +380,13 @@ void NPCAIMgr::WakeUp() {
     m_state = NPCAI::State::Idle;
 }
 
+void NPCAIMgr::StartAttackCycle(uint32 intervalMs) {
+    if (intervalMs == 0)
+        intervalMs = m_attackSpeed;
+    if (!m_mainAttackTimer.Enabled())
+        m_mainAttackTimer.Start(intervalMs);
+}
+
 void NPCAIMgr::WarpOut()
 {
     m_warpOutTimer.Disable();

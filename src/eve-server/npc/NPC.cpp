@@ -157,6 +157,8 @@ void NPC::OnAttacked(SystemEntity* attacker)
         Damage d(this, m_self, m_kinDamage * dmgMult, m_therDamage * dmgMult,
                  m_emDamage * dmgMult, m_expDamage * dmgMult, 1.0f, EVEEffectID::targetAttack);
         attacker->ApplyDamage(d);
+        // Also start the NPC's own attack cycle so it continues firing
+        m_AI->StartAttackCycle(2000);
         // Notify group (chains to all members)
         m_convoyAI->NotifyAttacked(attacker);
     }

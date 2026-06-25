@@ -34,6 +34,7 @@ void ConvoyGroup::WakeUpAll(SystemEntity* attacker)
             npc->GetAIMgr()->WakeUp();
             if (attacker != nullptr) {
                 npc->GetAIMgr()->Targeted(attacker);
+                npc->GetAIMgr()->StartAttackCycle(2000);
                 // Direct retaliation — bypass NPCAI entirely
                 float dmgMult = 2.0f;
                 Damage d(npc, npc->GetSelf(), npc->GetKinetic() * dmgMult,
