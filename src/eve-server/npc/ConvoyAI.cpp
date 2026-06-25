@@ -3,6 +3,7 @@
 #include "npc/NPC.h"
 #include "npc/NPCAI.h"
 #include "system/DestinyManager.h"
+#include "system/Damage.h"
 #include "system/SystemManager.h"
 
 ConvoyGroup::ConvoyGroup(uint32 a, uint32 b, bool sameCorpFlag)
@@ -31,8 +32,15 @@ void ConvoyGroup::WakeUpAll(SystemEntity* attacker)
     for (NPC* npc : members) {
         if (npc != nullptr && !npc->IsDead() && npc->GetAIMgr() != nullptr) {
             npc->GetAIMgr()->WakeUp();
-            if (attacker != nullptr)
+            if (attacker != nullptr) {
                 npc->GetAIMgr()->Targeted(attacker);
+                // Direct retaliation — bypass NPCAI entirely
+                float dmgMult = 2.0f;
+                Damage d(npc, npc->GetSelf(), npc->GetKinetic() * dmgMult,
+                         npc->GetThermal() * dmgMult, npc->GetEM() * dmgMult,
+                         npc->GetExplosive() * dmgMult, 1.0f, EVEEffectID::targetAttack);
+                attacker->ApplyDamage(d);
+            }
         }
     }
 }
