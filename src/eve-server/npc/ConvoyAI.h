@@ -10,12 +10,13 @@ struct ConvoyGroup {
     std::vector<NPC*> members;
     uint32 stationA, stationB;
     bool goToB;
-    int8 phase; // 0=FormUp, 1=Depart, 2=WarpOut, 3=Waiting
+    bool sameCorp; // both stations belong to same corporation
+    int8 phase; // 0=FormUp, 1=Departure, 2=Warping, 3=Waiting
     Timer* phaseTimer;
-    Timer* attackTimer; // non-null when under attack
+    Timer* attackTimer;
     uint32 refCount;
 
-    ConvoyGroup(uint32 a, uint32 b);
+    ConvoyGroup(uint32 a, uint32 b, bool sameCorpFlag);
     ~ConvoyGroup();
     bool IsUnderAttack() const { return attackTimer != nullptr && attackTimer->Enabled(); }
     void SetAttacked();
@@ -36,6 +37,7 @@ private:
     uint32 m_index;
 
     GPoint GetStationPosition(uint32 stationID);
+    GPoint GetDeparturePoint();
 };
 
 #endif

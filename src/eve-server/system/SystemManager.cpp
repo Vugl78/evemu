@@ -1876,19 +1876,23 @@ void SystemManager::SpawnConvoys()
     uint32 idxB = (idxA + 1 + (uint32)MakeRandomInt(0, stationIDs.size() - 2)) % stationIDs.size();
     uint32 stationA = stationIDs[idxA], stationB = stationIDs[idxB];
 
-    FactionData faction;
-    faction.allianceID = 0; faction.factionID = 500021;
-    faction.ownerID = 1000125; faction.corporationID = 1000125;
+    // Check if stations belong to the same corporation
+    uint32 corpA = m_staticEntities[stationA]->GetCorporationID();
+    uint32 corpB = m_staticEntities[stationB]->GetCorporationID();
+    bool sameCorp = (corpA > 0 && corpA == corpB);
 
-    // Place convoy at departure point (150km from station A toward station B)
+    FactionData faction;
+    faction.allianceID = 0;
+    faction.factionID = 500021;
+    faction.ownerID = (sameCorp ? corpA : 1000125);
+    faction.corporationID = (sameCorp ? corpA : 1000125);
+
+    // Spawn near station A
     GPoint posA = m_staticEntities[stationA]->GetPosition();
     GPoint posB = m_staticEntities[stationB]->GetPosition();
-    GVector dir(posA, posB);
-    dir.normalize();
-    GPoint departurePos = posA + (dir * 150000.0);
 
     // Create shared convoy group
-    ConvoyGroup* group = new ConvoyGroup(stationA, stationB);
+    ConvoyGroup* group = new ConvoyGroup(stationA, stationB, sameCorp);
 
     uint32 guardTypeIDs[] = { 10999, 11000, 11001, 11002 };
     uint32 haulerTypeIDs[] = { 2878, 2883 };
@@ -1900,9 +1904,9 @@ void SystemManager::SpawnConvoys()
     uint32 index = 0;
 
     auto spawnShip = [&](uint32 typeID, const char* prefix, uint32& idx) {
-        GPoint p = departurePos;
-        p.x += (float)MakeRandomInt(-500, 500);
-        p.z += (float)MakeRandomInt(-500, 500);
+        GPoint p = posA;
+        p.x += (float)MakeRandomInt(-3000, 3000);
+        p.z += (float)MakeRandomInt(-3000, 3000);
         snprintf(nameBuf, sizeof(nameBuf), "%s %u", prefix, idx + 1);
         ItemData idata(typeID, faction.ownerID, m_data.systemID, flagNone, nameBuf, p);
         InventoryItemRef iref = sItemFactory.SpawnItem(idata);

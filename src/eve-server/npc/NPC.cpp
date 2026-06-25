@@ -63,6 +63,7 @@ m_AI(new NPCAIMgr(this))
     m_self->SetAttribute(AttrShieldCharge,        10000.0f, false);
     m_self->SetAttribute(AttrCapacitorCharge,     m_self->GetAttribute(AttrCapacitorCapacity), false);
     m_self->SetAttribute(AttrWarpSpeedMultiplier, 1.0f, false);
+    m_self->SetAttribute(AttrEntityCruiseSpeed,  150.0f, false);
     m_self->SetAttribute(AttrArmorHP,             10000.0f, false);
     m_self->SetAttribute(AttrHP,                  10000.0f, false);
 
