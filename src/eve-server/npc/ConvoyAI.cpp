@@ -98,11 +98,24 @@ void ConvoyAI::Process()
     // Phase 0: waiting for staggered start timer
     if (phase == 0) {
         if (!m_startTimer->Enabled()) {
-            // Timer already fired — fly to departure point (catches stragglers after warp)
-            dest->GotoPoint(depPoint);
+            // Timer already fired
+            if (m_index == 0) {
+                dest->GotoPoint(depPoint);
+            } else {
+                // Follow the preceding ship
+                NPC* lead = m_group->members[m_index - 1];
+                if (lead != nullptr && !lead->IsDead())
+                    dest->Follow(lead, 2500);
+            }
         } else if (m_startTimer->Check()) {
             // Timer just expired — start departure
-            dest->GotoPoint(depPoint);
+            if (m_index == 0) {
+                dest->GotoPoint(depPoint);
+            } else {
+                NPC* lead = m_group->members[m_index - 1];
+                if (lead != nullptr && !lead->IsDead())
+                    dest->Follow(lead, 2500);
+            }
             if (m_index > 0)
                 m_group->phase = 1;
         }
@@ -111,11 +124,19 @@ void ConvoyAI::Process()
 
     // Phase 1: en route to departure point
     if (phase == 1) {
-        double dist = m_npc->GetPosition().distance(depPoint);
-        if (dist > 5000.0)
-            dest->GotoPoint(depPoint);
+        if (m_index == 0) {
+            double dist = m_npc->GetPosition().distance(depPoint);
+            if (dist > 5000.0)
+                dest->GotoPoint(depPoint);
+        } else {
+            NPC* lead = m_group->members[m_index - 1];
+            if (lead != nullptr && !lead->IsDead())
+                dest->Follow(lead, 2500);
+        }
         // Last ship arrival triggers group warp
-        if (m_index == m_group->members.size() - 1 && dist < 5000.0) {
+        if (m_index == m_group->members.size() - 1) {
+            double dist = m_npc->GetPosition().distance(depPoint);
+            if (dist < 5000.0) {
             for (NPC* member : m_group->members) {
                 if (member != nullptr && !member->IsDead() && member->DestinyMgr() != nullptr) {
                     GPoint targetPos = GetStationPosition(targetStation);
