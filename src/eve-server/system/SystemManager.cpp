@@ -1887,29 +1887,44 @@ void SystemManager::SpawnConvoys()
     dir.normalize();
     GPoint departurePos = posA + (dir * 150000.0);
 
+    // Create shared convoy group
+    ConvoyGroup* group = new ConvoyGroup(stationA, stationB);
+
     uint32 guardTypeIDs[] = { 10999, 11000, 11001, 11002 };
     uint32 haulerTypeIDs[] = { 2878, 2883 };
 
-    char nameBuf[64];
+    uint32 numGuards = 2 + (uint32)MakeRandomInt(0, 4);
+    uint32 numHaulers = 3 + (uint32)MakeRandomInt(0, 7);
 
-    auto spawnShip = [&](uint32 typeID, const char* prefix, uint32 num) {
+    char nameBuf[64];
+    uint32 index = 0;
+
+    auto spawnShip = [&](uint32 typeID, const char* prefix, uint32& idx) {
         GPoint p = departurePos;
         p.x += (float)MakeRandomInt(-500, 500);
         p.z += (float)MakeRandomInt(-500, 500);
-        snprintf(nameBuf, sizeof(nameBuf), "%s %u", prefix, num);
+        snprintf(nameBuf, sizeof(nameBuf), "%s %u", prefix, idx + 1);
         ItemData idata(typeID, faction.ownerID, m_data.systemID, flagNone, nameBuf, p);
         InventoryItemRef iref = sItemFactory.SpawnItem(idata);
         if (iref.get() != nullptr) {
-            DynamicSystemEntity* dse = new DynamicSystemEntity(iref, m_services, this);
-            dse->DestinyMgr()->SetPosition(p);
-            AddEntity(dse);
+            NPC* npc = new NPC(iref, m_services, this, faction);
+            if (npc && npc->Load()) {
+                AddNPC(npc);
+                npc->DestinyMgr()->SetPosition(p);
+                npc->SetConvoyAI(new ConvoyAI(npc, group, idx));
+                group->members.push_back(npc);
+                idx++;
+            } else if (npc) delete npc;
         }
     };
 
-    for (uint32 i = 0; i < 2; ++i)
-        spawnShip(guardTypeIDs[MakeRandomInt(0, 3)], "Convoy Guard", i + 1);
-    spawnShip(haulerTypeIDs[MakeRandomInt(0, 1)], "Convoy Hauler", 1);
+    for (uint32 i = 0; i < numGuards / 2 + (numGuards % 2); ++i)
+        spawnShip(guardTypeIDs[MakeRandomInt(0, 3)], "Convoy Guard", index);
+    for (uint32 i = 0; i < numHaulers; ++i)
+        spawnShip(haulerTypeIDs[MakeRandomInt(0, 1)], "Convoy Hauler", index);
+    for (uint32 i = 0; i < numGuards / 2; ++i)
+        spawnShip(guardTypeIDs[MakeRandomInt(0, 3)], "Convoy Rear Guard", index);
 
-    _log(SERVER__INIT, "Convoy spawned in %s(%u) route %u->%u",
-         m_data.name.c_str(), m_data.systemID, stationA, stationB);
+    _log(SERVER__INIT, "Convoy spawned in %s(%u) route %u-%u (%u ships)",
+         m_data.name.c_str(), m_data.systemID, stationA, stationB, group->members.size());
 }
