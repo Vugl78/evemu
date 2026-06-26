@@ -8,6 +8,7 @@
 #include "npc/NPC.h"
 #include "inventory/ItemFactory.h"
 #include "system/SystemBubble.h"
+#include "standing/KillRightDB.h"
 
 // CONCORD ship typeIDs from EVE static data
 static const uint32 CONCORD_TYPEIDS[] = {
@@ -22,13 +23,15 @@ CrimeWatch::CrimeWatch(Client* pClient)
   m_criminalTimer(sConfig.crime.CrimFlagTime * 1000),
   m_weaponTimer(sConfig.crime.WeaponFlagTime * 1000),
   m_concordTimer(0),
-  m_concordDamageTimer(0)
+  m_concordDamageTimer(0),
+  m_limitedEngagementTimer(900000) // 15 minutes
 {
     m_aggressionTimer.Disable();
     m_criminalTimer.Disable();
     m_weaponTimer.Disable();
     m_concordTimer.Disable();
     m_concordDamageTimer.Disable();
+    m_limitedEngagementTimer.Disable();
 }
 
 bool CrimeWatch::IsOutlaw() const
@@ -57,6 +60,7 @@ void CrimeWatch::Process()
     if (m_aggressionTimer.Enabled()) m_aggressionTimer.Check();
     if (m_criminalTimer.Enabled()) m_criminalTimer.Check();
     if (m_weaponTimer.Enabled()) m_weaponTimer.Check();
+    if (m_limitedEngagementTimer.Enabled()) m_limitedEngagementTimer.Check();
 }
 
 void CrimeWatch::ClearConcordShips()
@@ -98,13 +102,28 @@ void CrimeWatch::OnAggression(Client* pTarget, float systemSecRating)
     // Prevents docking and jumping
     m_aggressionTimer.Start(sConfig.crime.AggFlagTime * 1000);
 
-    // EVE: CONCORD only in highsec, skip if target is outlaw
-    bool targetIsOutlaw = (pTarget->GetCrimeWatch() != nullptr && pTarget->GetCrimeWatch()->IsOutlaw());
-    if (!targetIsOutlaw && systemSecRating >= 0.5f && !m_concordTimer.Enabled() && !m_concordDamageTimer.Enabled()) {
+    // Check if target has Limited Engagement (Kill Right was activated on them)
+    bool targetHasLimitedEng = (pTarget->GetCrimeWatch() != nullptr
+        && pTarget->GetCrimeWatch()->IsLimitedEngagement());
+    // Check if target is permaflashy (outlaw)
+    bool targetIsOutlaw = (pTarget->GetCrimeWatch() != nullptr
+        && pTarget->GetCrimeWatch()->IsOutlaw());
+
+    // If target has limited engagement, attack is legal — no crime, no CONCORD
+    if (targetHasLimitedEng || targetIsOutlaw)
+        return;
+
+    // Highsec: criminal act + CONCORD response + kill right grant
+    if (systemSecRating >= 0.5f) {
         if (!m_criminalTimer.Enabled()) {
             m_criminalTimer.Start(sConfig.crime.CrimFlagTime * 1000);
             m_client->SendNotifyMsg("CONCORD response initiated. You have been flagged as a criminal.");
         }
+
+        // grant Kill Right to victim
+        KillRightDB kdb;
+        if (kdb.GrantKillRight(pTarget->GetCharacterID(), m_client->GetCharacterID()) > 0)
+            pTarget->SendNotifyMsg("Kill Right granted against %s for criminal aggression.", m_client->GetName());
 
         // -0.2 penalty for aggression
         m_client->GetChar()->secStatusChange(-0.2f);
@@ -115,6 +134,12 @@ void CrimeWatch::OnAggression(Client* pTarget, float systemSecRating)
         else if (systemSecRating >= 0.7f) delay = 10000;
         else if (systemSecRating >= 0.6f) delay = 14000;
         m_concordTimer.Start(delay);
+    }
+    // Lowsec: pod kill also grants kill right
+    else if (systemSecRating > 0.0f && pTarget->InPod()) {
+        KillRightDB kdb;
+        if (kdb.GrantKillRight(pTarget->GetCharacterID(), m_client->GetCharacterID()) > 0)
+            pTarget->SendNotifyMsg("Kill Right granted against %s for pod kill.", m_client->GetName());
     }
 }
 
@@ -201,4 +226,10 @@ void CrimeWatch::ApplyConcordPenalty()
     shipSE->ApplyDamage(d);
 
     m_client->SendNotifyMsg("CONCORD has destroyed your ship.");
+}
+
+void CrimeWatch::SetLimitedEngagement()
+{
+    m_limitedEngagementTimer.Start(900000); // 15 minutes
+    m_client->SendNotifyMsg("Limited Engagement active for 15 minutes. You are a legal target.");
 }

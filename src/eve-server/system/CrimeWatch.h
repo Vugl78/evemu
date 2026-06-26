@@ -17,6 +17,7 @@ public:
     bool IsCriminal()       const { return m_criminalTimer.Enabled(); }
     bool HasWeaponTimer()   const { return m_weaponTimer.Enabled(); }
     bool IsOutlaw()         const;
+    bool IsLimitedEngagement() const { return m_limitedEngagementTimer.Enabled(); }
     bool CanDock()          const { return !m_aggressionTimer.Enabled() && !m_weaponTimer.Enabled() && !IsOutlaw(); }
     bool CanJump()          const { return !m_aggressionTimer.Enabled() && !m_weaponTimer.Enabled() && !IsOutlaw(); }
     bool IsConcordActive()  const { return m_concordTimer.Enabled() || m_concordDamageTimer.Enabled(); }
@@ -25,6 +26,7 @@ public:
     void OnAggression(Client* pTarget, float systemSecRating);
     void OnLooting();
     void ApplyConcordPenalty();
+    void SetLimitedEngagement();
 
 protected:
     void SpawnConcordShips();
@@ -37,6 +39,7 @@ private:
     Timer m_weaponTimer;
     Timer m_concordTimer;
     Timer m_concordDamageTimer;
+    Timer m_limitedEngagementTimer;
     std::vector<NPC*> m_concordShips;
 };
 

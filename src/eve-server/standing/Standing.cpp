@@ -25,6 +25,8 @@
 */
 
 #include "standing/Standing.h"
+#include "EntityList.h"
+#include "system/CrimeWatch.h"
 
 /*  re-write of standing system  -allan 10Apr15
  * see notes in StandingDB.cpp
@@ -49,6 +51,9 @@ Standing::Standing() :
     this->Add("GetNPCNPCStandings", &Standing::GetNPCNPCStandings);
     this->Add("GetSecurityRating", &Standing::GetSecurityRating);
     this->Add("GetMyKillRights", &Standing::GetMyKillRights);
+    this->Add("ActivateKillRight", &Standing::ActivateKillRight);
+    this->Add("UpdateKillRight", &Standing::UpdateKillRight);
+    this->Add("DeleteKillRight", &Standing::DeleteKillRight);
     this->Add("GetStandingTransactions", &Standing::GetStandingTransactions);
     this->Add("GetStandingCompositions", &Standing::GetStandingCompositions);
 }
@@ -78,21 +83,70 @@ PyResult Standing::GetSecurityRating(PyCallArgs &call, PyInt* ownerID) {
 }
 
 PyResult Standing::GetMyKillRights(PyCallArgs &call) {
-    // self.killRightsCache, self.killedRightsCache = sm.RemoteSvc('standing2').GetMyKillRights()
-    // each cache holds k,v where key is toID or fromID
     _log(STANDING__MESSAGE,  "Standing::Handle_GetMyKillRights()");
-    PyTuple* KillRights = new PyTuple(2);
-    PyDict* killRightsCache = new PyDict();
-    PyDict* killedRightsCache = new PyDict();
-        KillRights->items[0] = killRightsCache;
-        KillRights->items[1] = killedRightsCache;
+    PyRep* result = m_kdb.GetKillRights(call.client->GetCharacterID(), call.client->GetCharacterID());
+    if (result == nullptr) {
+        PyTuple* empty = new PyTuple(2);
+        empty->SetItem(0, new PyDict());
+        empty->SetItem(1, new PyDict());
+        return empty;
+    }
+    return result;
+}
 
-    if (is_log_enabled(STANDING__RSPDUMP)) {
-        _log(STANDING__RSPDUMP, "Standing::Handle_GetMyKillRights() RSP:" );
-        KillRights->Dump(STANDING__RSPDUMP, "    ");
+PyResult Standing::ActivateKillRight(PyCallArgs &call, PyInt* rightID) {
+    // get targetID from DB before activating
+    DBQueryResult res;
+    sDatabase.RunQuery(res, "SELECT targetID, ownerID, price FROM chrKillRights WHERE rightID = %u AND used = 0", rightID->value());
+    DBResultRow row;
+    if (!res.GetRow(row)) {
+        call.client->SendErrorMsg("Kill Right not found or already used.");
+        return new PyBool(false);
+    }
+    uint32 targetID = row.GetInt(0);
+    uint32 ownerID = row.GetInt(1);
+    uint64 price = row.GetUInt64(2);
+
+    if (!m_kdb.ActivateKillRight(rightID->value(), call.client->GetCharacterID())) {
+        call.client->SendErrorMsg("Failed to activate Kill Right.");
+        return new PyBool(false);
     }
 
-    return KillRights;
+    // pay the owner (buyer has already paid per EVE mechanic)
+    if (price > 0) {
+        // transfer ISK from activator to owner
+        sDatabase.RunQuery(DBerror(),
+            " UPDATE chrCharacters SET balance = balance - %" PRIu64 " WHERE characterID = %u",
+            price, call.client->GetCharacterID());
+        sDatabase.RunQuery(DBerror(),
+            " UPDATE chrCharacters SET balance = balance + %" PRIu64 " WHERE characterID = %u",
+            price, ownerID);
+    }
+
+    // set Limited Engagement on target
+    Client* targetClient = sEntityList.FindClientByCharID(targetID);
+    if (targetClient != nullptr && targetClient->GetCrimeWatch() != nullptr)
+        targetClient->GetCrimeWatch()->SetLimitedEngagement();
+
+    call.client->SendNotifyMsg("Kill Right activated. %s is now a legal target.", targetClient ? targetClient->GetName() : "Target");
+    return new PyBool(true);
+}
+
+PyResult Standing::UpdateKillRight(PyCallArgs &call, PyInt* rightID, PyLong* price, std::optional<PyInt*> accessMask) {
+    uint8 mask = accessMask.has_value() ? accessMask.value()->value() : 0;
+    if (m_kdb.UpdateKillRight(rightID->value(), price->value(), mask)) {
+        call.client->SendNotifyMsg("Kill Right updated.");
+        return new PyBool(true);
+    }
+    return new PyBool(false);
+}
+
+PyResult Standing::DeleteKillRight(PyCallArgs &call, PyInt* rightID) {
+    if (m_kdb.DeleteKillRight(rightID->value())) {
+        call.client->SendNotifyMsg("Kill Right deleted.");
+        return new PyBool(true);
+    }
+    return new PyBool(false);
 }
 
 PyResult Standing::GetStandingTransactions(PyCallArgs &call, PyInt* fromID, PyInt* toID, PyInt* direction, std::optional<PyInt*> eventID, std::optional<PyInt*> eventType, std::optional<PyLong*> eventDateTime) {

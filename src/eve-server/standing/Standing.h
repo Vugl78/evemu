@@ -35,6 +35,7 @@
 #include "inventory/ItemFactory.h"
 #include "character/Character.h"
 #include "inventory/ItemRef.h"
+#include "standing/KillRightDB.h"
 
 class Standing : public Service <Standing>
 {
@@ -43,6 +44,7 @@ public:
 
 protected:
     StandingDB m_db;
+    KillRightDB m_kdb;
 
     PyResult GetCharStandings(PyCallArgs& call);
     PyResult GetCorpStandings(PyCallArgs& call);
@@ -51,6 +53,9 @@ protected:
     PyResult GetMyKillRights(PyCallArgs& call);
     PyResult GetStandingTransactions(PyCallArgs& call, PyInt* fromID, PyInt* toID, PyInt* direction, std::optional<PyInt*> eventID, std::optional<PyInt*> eventType, std::optional<PyLong*> eventDateTime);
     PyResult GetStandingCompositions(PyCallArgs& call, PyInt* fromID, PyInt* toID);
+    PyResult ActivateKillRight(PyCallArgs& call, PyInt* rightID);
+    PyResult UpdateKillRight(PyCallArgs& call, PyInt* rightID, PyLong* price, std::optional<PyInt*> accessMask);
+    PyResult DeleteKillRight(PyCallArgs& call, PyInt* rightID);
 };
 
 #endif
