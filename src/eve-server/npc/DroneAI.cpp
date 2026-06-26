@@ -28,14 +28,14 @@ DroneAIMgr::DroneAIMgr(DroneSE* who)
   m_beginFindTarget(0),
   m_warpScramblerTimer(0),     //not implemented yet
   m_webifierTimer(0),             //not implemented yet
-  m_sigRadius(std::max(who->GetSelf()->GetAttribute(AttrSignatureRadius).get_float(), 50.0)),
-  m_attackSpeed(std::max(who->GetSelf()->GetAttribute(AttrSpeed).get_float(), 4000.0)),
-  m_cruiseSpeed(static_cast<uint32>(std::max(who->GetSelf()->GetAttribute(AttrEntityCruiseSpeed).get_int(), 500))),
-  m_chaseSpeed(static_cast<uint32>(std::max(who->GetSelf()->GetAttribute(AttrMaxVelocity).get_int(), 2000))),
-  m_entityFlyRange(std::max(who->GetSelf()->GetAttribute(AttrEntityFlyRange).get_float() + who->GetSelf()->GetAttribute(AttrMaxRange).get_float(), 25000.0)),
-  m_entityChaseRange(std::max(who->GetSelf()->GetAttribute(AttrEntityChaseMaxDistance).get_float() * 2, 5000.0)),
-  m_entityOrbitRange(std::max(who->GetSelf()->GetAttribute(AttrMaxRange).get_float(), 1000.0)),
-  m_entityAttackRange(std::max(who->GetSelf()->GetAttribute(AttrEntityAttackRange).get_float() * 2, 10000.0)),
+  m_sigRadius(std::max(who->GetSelf()->GetAttribute(AttrSignatureRadius).get_float(), 50.0f)),
+  m_attackSpeed(std::max(who->GetSelf()->GetAttribute(AttrSpeed).get_float(), 4000.0f)),
+  m_cruiseSpeed(static_cast<uint32>(std::max<int64>(who->GetSelf()->GetAttribute(AttrEntityCruiseSpeed).get_int(), 500))),
+  m_chaseSpeed(static_cast<uint32>(std::max<int64>(who->GetSelf()->GetAttribute(AttrMaxVelocity).get_int(), 2000))),
+  m_entityFlyRange(std::max(who->GetSelf()->GetAttribute(AttrEntityFlyRange).get_float() + who->GetSelf()->GetAttribute(AttrMaxRange).get_float(), 25000.0f)),
+  m_entityChaseRange(std::max(who->GetSelf()->GetAttribute(AttrEntityChaseMaxDistance).get_float() * 2, 5000.0f)),
+  m_entityOrbitRange(std::max(who->GetSelf()->GetAttribute(AttrMaxRange).get_float(), 1000.0f)),
+  m_entityAttackRange(std::max(who->GetSelf()->GetAttribute(AttrEntityAttackRange).get_float() * 2, 10000.0f)),
   m_shieldBoosterDuration(who->GetSelf()->GetAttribute(AttrEntityShieldBoostDuration).get_int()),
   m_armorRepairDuration(who->GetSelf()->GetAttribute(AttrEntityArmorRepairDuration).get_int())
 {
