@@ -10,7 +10,7 @@ PyRep* KillRightDB::GetKillRights(uint32 ownerID, uint32 targetID)
         " FROM chrKillRights "
         " WHERE (ownerID = %u OR targetID = %u)"
         " AND used = 0 AND expiryDate > %lli",
-        ownerID, targetID, GetFileTimeNow()))
+        ownerID, targetID, static_cast<int64>(GetFileTimeNow())))
     {
         codelog(DATABASE__ERROR, "Failed to query kill rights for %u", ownerID);
         return nullptr;
@@ -52,7 +52,7 @@ int32 KillRightDB::GrantKillRight(uint32 ownerID, uint32 targetID)
     if (sDatabase.RunQuery(res,
         " SELECT rightID FROM chrKillRights "
         " WHERE ownerID = %u AND targetID = %u AND used = 0 AND expiryDate > %lli",
-        ownerID, targetID, GetFileTimeNow()))
+        ownerID, targetID, static_cast<int64>(GetFileTimeNow())))
     {
         DBResultRow row;
         if (res.GetRow(row))
