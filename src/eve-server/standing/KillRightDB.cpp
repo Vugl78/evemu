@@ -24,7 +24,7 @@ PyRep* KillRightDB::GetKillRights(uint32 ownerID, uint32 targetID)
         entry->SetItemString("rightID", new PyInt(row.GetInt(0)));
         entry->SetItemString("ownerID", new PyInt(row.GetInt(1)));
         entry->SetItemString("targetID", new PyInt(row.GetInt(2)));
-        entry->SetItemString("price", new PyLong(row.GetUInt64(3)));
+        entry->SetItemString("price", new PyLong(row.GetInt64(3)));
         entry->SetItemString("accessMask", new PyInt(row.GetInt(4)));
         entry->SetItemString("created", new PyLong(row.GetUInt64(5)));
         entry->SetItemString("used", new PyBool(row.GetInt(6) ? true : false));
@@ -82,11 +82,11 @@ bool KillRightDB::ActivateKillRight(uint32 rightID, uint32 activatedBy)
         activatedBy, rightID);
 }
 
-bool KillRightDB::UpdateKillRight(uint32 rightID, uint64 price, uint8 accessMask)
+bool KillRightDB::UpdateKillRight(uint32 rightID, int64 price, uint8 accessMask)
 {
     DBerror err;
     return sDatabase.RunQuery(err,
-        " UPDATE chrKillRights SET price = %" PRIu64 ", accessMask = %u WHERE rightID = %u",
+        " UPDATE chrKillRights SET price = %" PRIi64 ", accessMask = %u WHERE rightID = %u",
         price, accessMask, rightID);
 }
 

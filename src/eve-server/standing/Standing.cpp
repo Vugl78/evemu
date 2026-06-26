@@ -105,7 +105,7 @@ PyResult Standing::ActivateKillRight(PyCallArgs &call, PyInt* rightID) {
     }
     uint32 targetID = row.GetInt(0);
     uint32 ownerID = row.GetInt(1);
-    uint64 price = row.GetUInt64(2);
+    int64 price = row.GetInt64(2);
 
     if (!m_kdb.ActivateKillRight(rightID->value(), call.client->GetCharacterID())) {
         call.client->SendErrorMsg("Failed to activate Kill Right.");
@@ -116,10 +116,10 @@ PyResult Standing::ActivateKillRight(PyCallArgs &call, PyInt* rightID) {
     if (price > 0) {
         // transfer ISK from activator to owner
         sDatabase.RunQuery(DBerror(),
-            " UPDATE chrCharacters SET balance = balance - %" PRIu64 " WHERE characterID = %u",
+            " UPDATE chrCharacters SET balance = balance - %" PRIi64 " WHERE characterID = %u",
             price, call.client->GetCharacterID());
         sDatabase.RunQuery(DBerror(),
-            " UPDATE chrCharacters SET balance = balance + %" PRIu64 " WHERE characterID = %u",
+            " UPDATE chrCharacters SET balance = balance + %" PRIi64 " WHERE characterID = %u",
             price, ownerID);
     }
 
