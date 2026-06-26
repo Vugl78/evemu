@@ -46,6 +46,7 @@ DroneSE::DroneSE(InventoryItemRef drone, EVEServiceManager &services, SystemMana
       assert (m_system != nullptr);
 
     m_online = false;
+    m_pendingRemoval = false;
 
     m_warID = data.factionID;
     m_allyID = data.allianceID;
@@ -79,11 +80,6 @@ DroneSE::DroneSE(InventoryItemRef drone, EVEServiceManager &services, SystemMana
     m_self->SetAttribute(AttrCapacitorCharge,     m_self->GetAttribute(AttrCapacitorCapacity), false);
 
     /** @todo update attribs from char skills here....it's not done by Fx system */
-
-    // sync destiny position to the item position (was set in LaunchDrone before construction)
-    // prevents incorrect distance calculations in Process() / control range check
-    if (!m_self->position().isZero())
-        m_destiny->SetPosition(m_self->position());
 
     m_destiny->UpdateShipVariables();
 
@@ -121,14 +117,27 @@ void DroneSE::SetOwner(Client* pClient) {
 void DroneSE::Process() {
     if (m_killed)
         return;
+
+    // deferred removal after AI-triggered scoop
+    // (ScoopDrone → Offline already ran; we remove from system on next tick so
+    //  the AI Process() stack can unwind safely)
+    if (m_pendingRemoval) {
+        m_killed = true;
+        m_system->RemoveEntity(this);
+        delete this;
+        return;
+    }
+
     double profileStartTime(GetTimeUSeconds());
 
-    /*  Enable base call to Process Targeting and Movement  */
     SystemEntity::Process();
 
-    /** @todo (allan) finish drone AI and processing */
     if (m_online)
         m_AI->Process();
+
+    // if AI just triggered a scoop, schedule entity removal for next tick
+    if (!m_online and !m_pendingRemoval)
+        m_pendingRemoval = true;
 
     if (sConfig.debug.UseProfiling)
         sProfiler.AddTime(Profile::drone, GetTimeUSeconds() - profileStartTime);
@@ -161,6 +170,16 @@ void DroneSE::Online(ShipSE* pShipSE/*nullptr*/) {
 
     if (pShipSE == nullptr)
         pShipSE = m_pShipSE;
+
+    // Sync destiny position from item before first Process tick that checks distance.
+    // The item position was set in ShipSE::LaunchDrone() before construction.
+    if (m_self->position().isZero() and (pShipSE != nullptr)) {
+        GPoint pos(pShipSE->GetPosition());
+        pos.MakeRandomPointOnSphere(500.0);
+        m_destiny->SetPosition(pos);
+    } else if (!m_self->position().isZero()) {
+        m_destiny->SetPosition(m_self->position());
+    }
 
     m_AI->AssignShip(pShipSE);
     IdleOrbit(pShipSE);   // begin orbiting home ship immediately
@@ -217,7 +236,8 @@ void DroneSE::StateChange() {
         du.activityState = m_AI->GetState();
         du.targetID = m_targetID;
     PyTuple* up = du.Encode();
-    m_bubble->BubblecastDestinyUpdate(&up, "destiny");
+    if (m_bubble != nullptr)
+        m_bubble->BubblecastDestinyUpdate(&up, "destiny");
 }
 
 void DroneSE::TargetAdded(SystemEntity* who) {
