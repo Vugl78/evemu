@@ -98,43 +98,39 @@ void CrimeWatch::OnAggression(Client* pTarget, float systemSecRating)
     if (!sConfig.crime.Enabled)
         return;
 
-    // EVE: aggression timer = 15 minutes after PvP aggression
-    // Prevents docking and jumping
-    m_aggressionTimer.Start(sConfig.crime.AggFlagTime * 1000);
-
-    // Check if target has Limited Engagement (Kill Right was activated on them)
-    bool targetHasLimitedEng = (pTarget->GetCrimeWatch() != nullptr
-        && pTarget->GetCrimeWatch()->IsLimitedEngagement());
-    // Check if target is permaflashy (outlaw)
-    bool targetIsOutlaw = (pTarget->GetCrimeWatch() != nullptr
-        && pTarget->GetCrimeWatch()->IsOutlaw());
-
-    // If target has limited engagement, attack is legal — no crime, no CONCORD
-    if (targetHasLimitedEng || targetIsOutlaw)
-        return;
-
-    // Check if attacker has a free Kill Right against the target
-    DBQueryResult krRes;
-    uint32 attackerID = m_client->GetCharacterID();
-    uint32 victimID = pTarget->GetCharacterID();
-    if (sDatabase.RunQuery(krRes,
-        " SELECT rightID, price FROM chrKillRights "
-        " WHERE ownerID = %u AND targetID = %u AND used = 0 AND expiryDate > %lli",
-        victimID, attackerID, static_cast<int64>(GetFileTimeNow())))
+    // Check legal attack conditions FIRST — before aggression timer or any flags
+    // (sentries check IsAggressed/IsCriminal, so these must be checked first)
     {
-        DBResultRow krRow;
-        if (krRes.GetRow(krRow)) {
-            int64 price = krRow.GetInt64(1);
-            // free kill right: auto-activate on attack
-            if (price == 0) {
-                if (pTarget->GetCrimeWatch() != nullptr)
-                    pTarget->GetCrimeWatch()->SetLimitedEngagement();
-                return;
+        // Check if target has Limited Engagement (Kill Right activated on them)
+        if (pTarget->GetCrimeWatch() != nullptr && pTarget->GetCrimeWatch()->IsLimitedEngagement())
+            return;
+        // Check if target is permaflashy (outlaw)
+        if (pTarget->GetCrimeWatch() != nullptr && pTarget->GetCrimeWatch()->IsOutlaw())
+            return;
+        // Check if attacker has a free Kill Right against the target
+        DBQueryResult krRes;
+        uint32 attackerID = m_client->GetCharacterID();
+        uint32 victimID = pTarget->GetCharacterID();
+        if (sDatabase.RunQuery(krRes,
+            " SELECT rightID, price FROM chrKillRights "
+            " WHERE ownerID = %u AND targetID = %u AND used = 0 AND expiryDate > %lli",
+            victimID, attackerID, static_cast<int64>(GetFileTimeNow())))
+        {
+            DBResultRow krRow;
+            if (krRes.GetRow(krRow)) {
+                int64 price = krRow.GetInt64(1);
+                if (price == 0) {
+                    // free kill right: set limited engagement, no flags at all
+                    if (pTarget->GetCrimeWatch() != nullptr)
+                        pTarget->GetCrimeWatch()->SetLimitedEngagement();
+                    return;
+                }
             }
-            // paid kill right: skip auto-activation, owner must call ActivateKillRight
-            // fall through to normal crime check
         }
     }
+
+    // EVE: aggression timer = 15 minutes after PvP aggression
+    m_aggressionTimer.Start(sConfig.crime.AggFlagTime * 1000);
 
     // Highsec: criminal act + CONCORD response + kill right grant
     if (systemSecRating >= 0.5f) {
