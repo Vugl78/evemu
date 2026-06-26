@@ -1835,6 +1835,10 @@ void DestinyManager::WarpStop(double currentShipSpeed) {
         mySE->GetNPCSE()->GetAIMgr()->WarpOutComplete();
     }
 
+    // Force final position to client to prevent desync
+    // (ship appears at wrong location until manual update)
+    SetPosition(m_position, true);
+
     // Post-warp deceleration is handled by SetSpeedFraction(0.0f) above,
     // which set m_ballMode=GOTO and configured decel variables to match the
     // client's own decel animation. Rapid re-warp is handled by the movement
