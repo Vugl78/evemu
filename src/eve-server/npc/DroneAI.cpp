@@ -9,6 +9,7 @@
 
 #include "eve-server.h"
 
+#include <algorithm>
 #include "Client.h"
 #include "inventory/AttributeEnum.h"
 #include "system/DestinyManager.h"
@@ -27,23 +28,18 @@ DroneAIMgr::DroneAIMgr(DroneSE* who)
   m_beginFindTarget(0),
   m_warpScramblerTimer(0),     //not implemented yet
   m_webifierTimer(0),             //not implemented yet
-  m_sigRadius(who->GetSelf()->GetAttribute(AttrSignatureRadius).get_float()),
-  m_attackSpeed(who->GetSelf()->GetAttribute(AttrSpeed).get_float()),
-  m_cruiseSpeed(who->GetSelf()->GetAttribute(AttrEntityCruiseSpeed).get_int()),
-  m_chaseSpeed(who->GetSelf()->GetAttribute(AttrMaxVelocity).get_int()),
-  m_entityFlyRange(who->GetSelf()->GetAttribute(AttrEntityFlyRange).get_float() + who->GetSelf()->GetAttribute(AttrMaxRange).get_float()),
-  m_entityChaseRange(who->GetSelf()->GetAttribute(AttrEntityChaseMaxDistance).get_float() *2),
-  m_entityOrbitRange(who->GetSelf()->GetAttribute(AttrMaxRange).get_float()),
-  m_entityAttackRange(who->GetSelf()->GetAttribute(AttrEntityAttackRange).get_float() *2),
+  m_sigRadius(std::max(who->GetSelf()->GetAttribute(AttrSignatureRadius).get_float(), 50.0)),
+  m_attackSpeed(std::max(who->GetSelf()->GetAttribute(AttrSpeed).get_float(), 4000.0)),
+  m_cruiseSpeed(static_cast<uint32>(std::max(who->GetSelf()->GetAttribute(AttrEntityCruiseSpeed).get_int(), 500))),
+  m_chaseSpeed(static_cast<uint32>(std::max(who->GetSelf()->GetAttribute(AttrMaxVelocity).get_int(), 2000))),
+  m_entityFlyRange(std::max(who->GetSelf()->GetAttribute(AttrEntityFlyRange).get_float() + who->GetSelf()->GetAttribute(AttrMaxRange).get_float(), 2000.0)),
+  m_entityChaseRange(std::max(who->GetSelf()->GetAttribute(AttrEntityChaseMaxDistance).get_float() * 2, 5000.0)),
+  m_entityOrbitRange(std::max(who->GetSelf()->GetAttribute(AttrMaxRange).get_float(), 1000.0)),
+  m_entityAttackRange(std::max(who->GetSelf()->GetAttribute(AttrEntityAttackRange).get_float() * 2, 10000.0)),
   m_shieldBoosterDuration(who->GetSelf()->GetAttribute(AttrEntityShieldBoostDuration).get_int()),
   m_armorRepairDuration(who->GetSelf()->GetAttribute(AttrEntityArmorRepairDuration).get_int())
 {
     m_processTimer.Start(5000);     //arbitrary.
-
-    // proximityRange (154) tells us how far we "see"
-
-    if (m_entityAttackRange < 10000)   // most of these are low...under 6k  that sux for targeting
-        m_entityAttackRange *= 3;
 }
 
 void DroneAIMgr::Process() {
