@@ -1093,7 +1093,7 @@ void DestinyManager::Turn() {   // tracking within 900m for Frigates, 1k4m for B
     }
 
     if (turnPercent > 0.9f) {
-        _log(DESTINY__ERROR, "Destiny::Turn() - turnTic:%u, degRemain:%.3f, turnPercent:%.2f", m_turnTic, degrees, turnPercent);
+        _log(DESTINY__TURN_TRACE, "Destiny::Turn() - turnTic:%u, degRemain:%.3f, turnPercent:%.2f", m_turnTic, degrees, turnPercent);
         turnPercent = 0.9;
     }
     deltaHeading *= turnPercent;
