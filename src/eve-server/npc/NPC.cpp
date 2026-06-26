@@ -33,6 +33,8 @@
 #include "npc/NPC.h"
 #include "npc/ConvoyAI.h"
 #include "npc/NPCAI.h"
+#include "npc/Sentry.h"
+#include "npc/SentryAI.h"
 #include "system/Container.h"
 #include "system/Damage.h"
 #include "system/SystemManager.h"
@@ -172,6 +174,42 @@ void NPC::OnAttacked(SystemEntity* attacker)
             c->SendNotifyMsg("CONVOY ALERT: %s in %s is under attack by %s!",
                              GetName(), m_system->GetNameStr().c_str(), p->GetName());
     }
+
+    // Activate sentry guns near the relevant station(s)
+    if (m_convoyAI != nullptr && m_system != nullptr && attacker->HasPilot()) {
+        auto findStation = [&](uint32 id) -> SystemEntity* {
+            auto& ents = m_system->GetEntities();
+            auto it = ents.find(id);
+            return (it != ents.end()) ? it->second : nullptr;
+        };
+        SystemEntity* stA = findStation(m_convoyAI->GetStationA());
+        SystemEntity* stB = findStation(m_convoyAI->GetStationB());
+        for (auto& [eid, pSE] : m_system->GetEntities()) {
+            if (pSE == nullptr || !pSE->IsSentrySE())
+                continue;
+            GPoint sp = pSE->GetPosition();
+            bool nearStation = false;
+            if (stA != nullptr && sp.distance(stA->GetPosition()) < 30000.0)
+                nearStation = true;
+            else if (m_convoyAI->GetSameCorp() && stB != nullptr && sp.distance(stB->GetPosition()) < 30000.0)
+                nearStation = true;
+            if (!nearStation)
+                continue;
+            Sentry* sentry = pSE->GetSentrySE();
+            sentry->GetAIMgr()->Target(attacker);
+            // Direct damage (sentry AI may not process continuously)
+            AttackTargetWithSentry(sentry, attacker);
+        }
+    }
+}
+
+void NPC::AttackTargetWithSentry(Sentry* sentry, SystemEntity* target)
+{
+    float dmgMult = 3.0f;
+    Damage d(sentry, sentry->GetSelf(), sentry->GetKinetic() * dmgMult,
+             sentry->GetThermal() * dmgMult, sentry->GetEM() * dmgMult,
+             sentry->GetExplosive() * dmgMult, 1.0f, EVEEffectID::targetAttack);
+    target->ApplyDamage(d);
 }
 
 NPC::~NPC() {

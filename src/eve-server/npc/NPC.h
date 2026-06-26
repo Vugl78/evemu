@@ -37,6 +37,7 @@ class InventoryItem;
 class Missile;
 class NPCAIMgr;
 class ConvoyAI;
+class Sentry;
 class SystemManager;
 
 class NPC
@@ -70,6 +71,7 @@ public:
     void SaveNPC();
     void RemoveNPC();
     void SetResists();
+    void AttackTargetWithSentry(Sentry* sentry, SystemEntity* target);
     void UseHullRepairer();
     void UseArmorRepairer();
     void UseShieldRecharge();

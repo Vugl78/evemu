@@ -31,6 +31,9 @@ public:
 
     bool IsGroupUnderAttack() const { return m_group->IsUnderAttack(); }
     void NotifyAttacked(SystemEntity* attacker) { m_group->SetAttacked(attacker); }
+    uint32 GetStationA() const { return m_group->stationA; }
+    uint32 GetStationB() const { return m_group->stationB; }
+    bool GetSameCorp() const { return m_group->sameCorp; }
 
 private:
     NPC* m_npc;
