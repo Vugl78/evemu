@@ -113,6 +113,27 @@ void CrimeWatch::OnAggression(Client* pTarget, float systemSecRating)
     if (targetHasLimitedEng || targetIsOutlaw)
         return;
 
+    // Check if attacker has a Kill Right against the target
+    DBQueryResult krRes;
+    uint32 attackerID = m_client->GetCharacterID();
+    uint32 victimID = pTarget->GetCharacterID();
+    if (sDatabase.RunQuery(krRes,
+        " SELECT rightID FROM chrKillRights "
+        " WHERE ownerID = %u AND targetID = %u AND used = 0 AND expiryDate > %lli",
+        victimID, attackerID, static_cast<int64>(GetFileTimeNow())))
+    {
+        DBResultRow krRow;
+        if (krRes.GetRow(krRow)) {
+            // attacker has a kill right against victim — attack is legal
+            // set limited engagement on victim, mark kill right as used
+            if (pTarget->GetCrimeWatch() != nullptr)
+                pTarget->GetCrimeWatch()->SetLimitedEngagement();
+            KillRightDB kdb;
+            kdb.ActivateKillRight(krRow.GetInt(0), attackerID);
+            return;
+        }
+    }
+
     // Highsec: criminal act + CONCORD response + kill right grant
     if (systemSecRating >= 0.5f) {
         if (!m_criminalTimer.Enabled()) {
