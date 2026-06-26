@@ -56,6 +56,7 @@ Standing::Standing() :
     this->Add("DeleteKillRight", &Standing::DeleteKillRight);
     this->Add("GetKillRightInfo", &Standing::GetKillRightInfo);
     this->Add("GetKillRightsList", &Standing::GetKillRightsList);
+    this->Add("ActivateKillRightByTarget", &Standing::ActivateKillRightByTarget);
     this->Add("GetStandingTransactions", &Standing::GetStandingTransactions);
     this->Add("GetStandingCompositions", &Standing::GetStandingCompositions);
 }
@@ -210,6 +211,22 @@ PyResult Standing::GetKillRightsList(PyCallArgs &call) {
         list->AddItem(new PyObject("util.KeyVal", kr));
     }
     return list;
+}
+
+PyResult Standing::ActivateKillRightByTarget(PyCallArgs &call, PyInt* targetID) {
+    DBQueryResult res;
+    sDatabase.RunQuery(res,
+        " SELECT rightID, price FROM chrKillRights "
+        " WHERE ownerID = %u AND targetID = %u AND used = 0 AND expiryDate > %lli",
+        call.client->GetCharacterID(), targetID->value(), static_cast<int64>(GetFileTimeNow()));
+    DBResultRow row;
+    if (!res.GetRow(row)) {
+        call.client->SendErrorMsg("No active Kill Right found for this target.");
+        return new PyBool(false);
+    }
+    // delegate to ActivateKillRight with the found rightID
+    PyInt krID(row.GetInt(0));
+    return ActivateKillRight(call, &krID);
 }
 
 PyResult Standing::GetStandingTransactions(PyCallArgs &call, PyInt* fromID, PyInt* toID, PyInt* direction, std::optional<PyInt*> eventID, std::optional<PyInt*> eventType, std::optional<PyLong*> eventDateTime) {

@@ -58,6 +58,7 @@ protected:
     PyResult DeleteKillRight(PyCallArgs& call, PyInt* rightID);
     PyResult GetKillRightInfo(PyCallArgs& call, PyInt* rightID);
     PyResult GetKillRightsList(PyCallArgs& call);
+    PyResult ActivateKillRightByTarget(PyCallArgs& call, PyInt* targetID);
 };
 
 #endif
