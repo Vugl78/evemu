@@ -125,11 +125,9 @@ void CrimeWatch::OnAggression(Client* pTarget, float systemSecRating)
         DBResultRow krRow;
         if (krRes.GetRow(krRow)) {
             // attacker has a kill right against victim — attack is legal
-            // set limited engagement on victim, mark kill right as used
+            // set limited engagement on victim but DON'T mark used yet
             if (pTarget->GetCrimeWatch() != nullptr)
                 pTarget->GetCrimeWatch()->SetLimitedEngagement();
-            KillRightDB kdb;
-            kdb.ActivateKillRight(krRow.GetInt(0), attackerID);
             return;
         }
     }

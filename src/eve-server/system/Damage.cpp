@@ -43,6 +43,7 @@
 #include "system/SystemBubble.h"
 #include "system/cosmicMgrs/AnomalyMgr.h"
 #include "standing/StandingMgr.h"
+#include "standing/KillRightDB.h"
 #include "StaticDataMgr.h"
 
 /*
@@ -582,6 +583,25 @@ void ShipSE::Killed(Damage &fatal_blow) {
     data.moonID = m_system->GetID();
 
     pPilot->GetChar()->LogKill(data);
+
+    // consume active kill rights against the victim
+    {
+        DBQueryResult krRes;
+        uint32 victimCharID = pPilot->GetCharacterID();
+        if (sDatabase.RunQuery(krRes,
+            " SELECT rightID FROM chrKillRights "
+            " WHERE targetID = %u AND used = 0 AND expiryDate > %lli",
+            victimCharID, static_cast<int64>(GetFileTimeNow())))
+        {
+            DBResultRow krRow;
+            while (krRes.GetRow(krRow)) {
+                DBerror err;
+                sDatabase.RunQuery(err,
+                    " UPDATE chrKillRights SET used = 1, activatedBy = %u WHERE rightID = %u",
+                    killerID, krRow.GetInt(0));
+            }
+        }
+    }
 
     // send killmail notification
     {
