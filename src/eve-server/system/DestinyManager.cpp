@@ -1345,8 +1345,8 @@ void DestinyManager::Orbit() {
     // sanity check: computed orbit position must be within reasonable range of target
     {
         double posDist = mPos.distance(Tp);
-        if (posDist > m_followDistance * 10.0) {
-            if (posDist > 1000000.0) {
+        if (posDist > m_followDistance * 3.0) {
+            if (posDist > 200000.0) {
                 // egregiously far — teleport to a reasonable orbit start near the target
                 _log(DESTINY__TRACE, "%s(%u): Orbit position %.0fm from target — teleporting to orbit start.",
                      mySE->GetName(), mySE->GetID(), posDist);
@@ -1358,7 +1358,7 @@ void DestinyManager::Orbit() {
                 m_orbiting = Destiny::Ball::Orbit::TooFar;
             } else {
                 _log(DESTINY__TRACE, "%s(%u): Orbit position is %.0fm from target (max %u).  Resetting to approach.",
-                     mySE->GetName(), mySE->GetID(), posDist, uint32(m_followDistance * 10.0));
+                     mySE->GetName(), mySE->GetID(), posDist, uint32(m_followDistance * 3.0));
                 m_orbiting = Destiny::Ball::Orbit::TooFar;
                 m_targetPoint = Tp;
                 GVector heading(m_position, m_targetPoint);
