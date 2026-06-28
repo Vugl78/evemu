@@ -15,6 +15,7 @@
   */
 
 #include "character/Character.h" // this sets compat includes for this file
+#include "Client.h"
 #include "npc/NPC.h"
 #include "npc/NPCAI.h"
 #include "npc/Drone.h"
@@ -143,7 +144,16 @@ float TurretFormulas::GetDroneToHit(DroneSE* pDrone, SystemEntity* pTarget)
     float distance = pDrone->DestinyMgr()->GetPosition().distance(pTarget->DestinyMgr()->GetPosition());
     GVector vector = pTarget->GetVelocity() - pDrone->GetVelocity();
     float transversalV = vector.length();
-    float a = (transversalV / (distance * pDrone->GetSelf()->GetAttribute(AttrTrackingSpeed).get_float()));
+    float trackingSpeed = pDrone->GetSelf()->GetAttribute(AttrTrackingSpeed).get_float();
+    Client* pOwner = pDrone->GetOwner();
+    if ((pOwner != nullptr) and (pOwner->GetChar().get() != nullptr)) {
+        // Combat Drone Operation (+2% tracking per level)
+        trackingSpeed *= (1.0f + 0.02f * pOwner->GetChar()->GetSkillLevel(EvESkill::CombatDroneOperation));
+        // Drone Sharpshooting (+10% optimal/falloff per level)
+        float rangeMult = 1.0f + 0.10f * pOwner->GetChar()->GetSkillLevel(EvESkill::DroneSharpshooting);
+        falloff *= rangeMult;
+    }
+    float a = (transversalV / (distance * trackingSpeed));
     float b = (pDrone->GetSelf()->GetAttribute(AttrOptimalSigRadius).get_float() / pTarget->GetSelf()->GetAttribute(AttrSignatureRadius).get_float());
     float c = pow((a * b), 2);
     float d = EvE::max(distance - pDrone->GetSelf()->GetAttribute(AttrEntityAttackRange).get_float());

@@ -124,6 +124,8 @@ private:
     DroneSE* m_pDrone;
     ShipSE* m_assignedShip;
 
+    int8 GetOwnerSkillLevel(uint16 skillID) const;
+
     TurretFormulas m_formula;
 
     Timer m_processTimer;
