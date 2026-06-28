@@ -283,7 +283,8 @@ void DroneAIMgr::SetEngaged(SystemEntity* pTarget) {
     _log(DRONE__AI_TRACE, "Drone %s(%u): SetEngaged: %s(%u) begin engaging.",
          m_pDrone->GetName(), m_pDrone->GetID(), pTarget->GetName(), pTarget->GetID());
     // actively fighting - keep max velocity to maintain pursuit of moving targets
-    m_pDrone->DestinyMgr()->SetMaxVelocity(m_chaseSpeed);
+    float vel = m_chaseSpeed * (1.0f + 0.05f * GetOwnerSkillLevel(EvESkill::DroneNavigation));
+    m_pDrone->DestinyMgr()->SetMaxVelocity(vel);
     m_pDrone->DestinyMgr()->Orbit(pTarget, m_entityOrbitRange);  //try to get inside orbit range
     m_state = DroneAI::State::Engaged;
 }
@@ -294,7 +295,8 @@ void DroneAIMgr::SetApproaching(SystemEntity* pSE)
         return;
     _log(DRONE__AI_TRACE, "Drone %s(%u): SetApproaching: %s(%u) begin pursuit.",
          m_pDrone->GetName(), m_pDrone->GetID(), pSE->GetName(), pSE->GetID());
-    m_pDrone->DestinyMgr()->SetMaxVelocity(m_chaseSpeed);
+    float vel = m_chaseSpeed * (1.0f + 0.05f * GetOwnerSkillLevel(EvESkill::DroneNavigation));
+    m_pDrone->DestinyMgr()->SetMaxVelocity(vel);
     m_pDrone->DestinyMgr()->Follow(pSE, m_entityOrbitRange);
     m_state = DroneAI::State::Approaching;
 }
@@ -313,20 +315,24 @@ void DroneAIMgr::CheckDistance(SystemEntity* pSE)
     }
 
     double dist = m_pDrone->GetPosition().distance(pSE->GetPosition());
+    // Drone Sharpshooting: +10% optimal/falloff per level
+    float rangeMult = 1.0f + 0.10f * GetOwnerSkillLevel(EvESkill::DroneSharpshooting);
+    float flyRange = m_entityFlyRange * rangeMult;
+    float attackRange = m_entityAttackRange * rangeMult;
 
     // If we're approaching and still far away, keep chasing
-    if ((m_state == DroneAI::State::Approaching) && (dist > m_entityFlyRange)) {
+    if ((m_state == DroneAI::State::Approaching) && (dist > flyRange)) {
         // keep approaching — flyRange only limits attack, not pursuit
         return;
     }
 
-    if (dist > m_entityFlyRange) {
+    if (dist > flyRange) {
         _log(DRONE__AI_TRACE, "Drone %s(%u): CheckDistance: %s(%u) is too far away (%.0f).  Return to Idle.",
              m_pDrone->GetName(), m_pDrone->GetID(), pSE->GetName(), pSE->GetID(), dist);
         ClearTarget(pSE);
         return;
     }
-    if (dist > m_entityAttackRange) {
+    if (dist > attackRange) {
         // within fly range but outside attack range — approach
         SetApproaching(pSE);
         return;
@@ -537,11 +543,19 @@ void DroneAIMgr::CombatAttack(SystemEntity* pTarget) {
 
     // apply owner's drone skills
     float skillMult = 1.0f;
-    Client* pOwner = m_pDrone->GetOwner();
-    if ((pOwner != nullptr) and (pOwner->GetChar().get() != nullptr)) {
-        int8 dronesSkill = pOwner->GetChar()->GetSkillLevel(EvESkill::Drones);
-        int8 droneInterfacing = pOwner->GetChar()->GetSkillLevel(EvESkill::DroneInterfacing);
-        skillMult = (1.0f + 0.05f * dronesSkill) * (1.0f + 0.10f * droneInterfacing);
+    if (m_pDrone->GetOwner() != nullptr) {
+        skillMult = (1.0f + 0.05f * GetOwnerSkillLevel(EvESkill::Drones))
+                  * (1.0f + 0.10f * GetOwnerSkillLevel(EvESkill::DroneInterfacing))
+                  * (1.0f + 0.05f * GetOwnerSkillLevel(EvESkill::HeavyDroneOperation));
+        // racial specialization (+2% per level)
+        int8 raceID = m_pDrone->GetSelf()->type().raceID();
+        uint16 racialSkill = (raceID == 1 ? EvESkill::CaldariDroneSpecialization
+                           : raceID == 2 ? EvESkill::MinmatarDroneSpecialization
+                           : raceID == 4 ? EvESkill::AmarrDroneSpecialization
+                           : raceID == 8 ? EvESkill::GallenteDroneSpecialization
+                           : 0);
+        if (racialSkill != 0)
+            skillMult *= (1.0f + 0.02f * GetOwnerSkillLevel(racialSkill));
     }
     d *= skillMult;
 
@@ -731,6 +745,13 @@ void DroneAIMgr::CapDrainAttack(SystemEntity* pTarget) {
             }
         }
     }
+}
+
+int8 DroneAIMgr::GetOwnerSkillLevel(uint16 skillID) const {
+    Client* pOwner = m_pDrone->GetOwner();
+    if ((pOwner == nullptr) or (pOwner->GetChar().get() == nullptr))
+        return 0;
+    return pOwner->GetChar()->GetSkillLevel(skillID);
 }
 
 ShipSE* DroneAIMgr::GetOwnerShip() {
